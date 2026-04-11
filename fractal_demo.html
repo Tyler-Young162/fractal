@@ -1,0 +1,1853 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分形创世实验舱 - 科技馆交互展品</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --panel-width: clamp(340px, 32vw, 440px);
+            --bg: #060912;
+            --bg-soft: rgba(11, 18, 32, 0.9);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(146, 224, 255, 0.22);
+            --text-main: #eef6ff;
+            --text-muted: rgba(221, 235, 255, 0.62);
+            --text-faint: rgba(198, 216, 241, 0.42);
+            --accent: #78f2ff;
+            --accent-soft: rgba(120, 242, 255, 0.18);
+            --danger: #ff8ca6;
+            --shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            position: relative;
+            background:
+                radial-gradient(circle at top left, rgba(47, 124, 255, 0.16), transparent 36%),
+                radial-gradient(circle at bottom right, rgba(0, 194, 255, 0.12), transparent 34%),
+                linear-gradient(135deg, #03050a 0%, #09111d 45%, #04070f 100%);
+            color: var(--text-main);
+            font-family: "Noto Sans SC", sans-serif;
+        }
+
+        canvas {
+            position: fixed !important;
+            inset: 0;
+            display: block;
+            z-index: 0;
+        }
+
+        #ui-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: var(--panel-width);
+            z-index: 2;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background:
+                linear-gradient(180deg, rgba(8, 15, 30, 0.94) 0%, rgba(6, 12, 24, 0.86) 100%);
+            backdrop-filter: blur(24px) saturate(130%);
+            -webkit-backdrop-filter: blur(24px) saturate(130%);
+            border-right: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(120, 242, 255, 0.24) transparent;
+        }
+
+        #ui-panel::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(180deg, rgba(120, 242, 255, 0.08), transparent 26%),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05), transparent 14%);
+            opacity: 0.75;
+        }
+
+        #ui-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #ui-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #ui-panel::-webkit-scrollbar-thumb {
+            background: rgba(120, 242, 255, 0.24);
+            border-radius: 999px;
+        }
+
+        .panel-header,
+        .section,
+        .footer-tips {
+            position: relative;
+            z-index: 1;
+        }
+
+        .panel-header {
+            padding: 30px 28px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(120, 242, 255, 0.18);
+            background: rgba(120, 242, 255, 0.06);
+            color: var(--text-muted);
+            font-size: 11px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 12px rgba(120, 242, 255, 0.85);
+        }
+
+        .panel-header h1 {
+            margin-top: 18px;
+            font-family: "Noto Serif SC", serif;
+            font-size: clamp(28px, 3.2vw, 38px);
+            line-height: 1.16;
+            letter-spacing: 0.03em;
+            color: #f7fbff;
+            text-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
+        }
+
+        .panel-header p {
+            margin-top: 12px;
+            max-width: 28ch;
+            font-size: 13px;
+            line-height: 1.8;
+            color: var(--text-muted);
+        }
+
+        .status-strip {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .status-card {
+            padding: 12px 14px;
+            min-height: 78px;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .status-card span {
+            display: block;
+            color: var(--text-faint);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .status-card strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 20px;
+            color: #f8fcff;
+            letter-spacing: 0.02em;
+        }
+
+        .status-card em {
+            display: block;
+            margin-top: 8px;
+            font-style: normal;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-muted);
+        }
+
+        .section {
+            padding: 22px 28px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .section-title {
+            margin-bottom: 14px;
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .preset-btn,
+        .shape-btn,
+        .queue-chip,
+        .toggle-switch,
+        .palette-swatch {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .preset-btn {
+            text-align: left;
+            padding: 14px 14px 13px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+            color: var(--text-main);
+            cursor: pointer;
+            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .preset-btn:hover {
+            transform: translateY(-2px);
+            border-color: rgba(120, 242, 255, 0.24);
+        }
+
+        .preset-btn.active {
+            border-color: var(--border-strong);
+            background:
+                linear-gradient(180deg, rgba(120, 242, 255, 0.18), rgba(120, 242, 255, 0.05));
+            box-shadow: inset 0 0 0 1px rgba(120, 242, 255, 0.12);
+        }
+
+        .preset-name {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .preset-meta {
+            display: block;
+            margin-top: 6px;
+            font-size: 11px;
+            line-height: 1.55;
+            color: var(--text-muted);
+        }
+
+        .shape-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .shape-btn {
+            padding: 10px 0;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+        .shape-btn:hover {
+            border-color: rgba(120, 242, 255, 0.2);
+            color: var(--text-main);
+        }
+
+        .shape-btn.active {
+            color: #eaffff;
+            border-color: rgba(120, 242, 255, 0.28);
+            background: linear-gradient(180deg, rgba(120, 242, 255, 0.18), rgba(120, 242, 255, 0.05));
+            box-shadow: inset 0 0 0 1px rgba(120, 242, 255, 0.1);
+        }
+
+        .queue-label {
+            margin: 16px 0 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        #shape-queue {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 52px;
+            padding: 10px;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.18);
+            border: 1px dashed rgba(120, 242, 255, 0.16);
+        }
+
+        .queue-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px 8px 9px;
+            border-radius: 999px;
+            border: 1px solid rgba(120, 242, 255, 0.2);
+            background: rgba(120, 242, 255, 0.11);
+            color: #dffcff;
+            font-size: 12px;
+            cursor: grab;
+            user-select: none;
+            transition: transform 0.18s ease, opacity 0.18s ease;
+        }
+
+        .queue-chip:active {
+            cursor: grabbing;
+        }
+
+        .queue-chip.dragging {
+            opacity: 0.4;
+            transform: scale(0.92);
+        }
+
+        .chip-order {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.26);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .chip-remove {
+            border: 0;
+            background: transparent;
+            color: rgba(226, 246, 255, 0.56);
+            font-size: 15px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .chip-remove:hover {
+            color: var(--danger);
+        }
+
+        .drop-indicator {
+            width: 4px;
+            margin: 0 -2px;
+            align-self: stretch;
+            border-radius: 999px;
+            background: linear-gradient(180deg, rgba(120, 242, 255, 0.18), rgba(120, 242, 255, 0.92));
+            box-shadow: 0 0 16px rgba(120, 242, 255, 0.75);
+        }
+
+        .param-row {
+            margin-bottom: 16px;
+        }
+
+        .param-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .param-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #edf6ff;
+        }
+
+        .param-val {
+            font-size: 12px;
+            color: var(--accent);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            padding: 4px 8px;
+        }
+
+        .param-hint {
+            font-size: 11px;
+            line-height: 1.6;
+            color: var(--text-faint);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            appearance: none;
+            border-radius: 999px;
+            outline: none;
+            background:
+                linear-gradient(90deg, rgba(120, 242, 255, 0.36), rgba(120, 242, 255, 0.06)),
+                rgba(255, 255, 255, 0.06);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.32);
+            background: #d8ffff;
+            box-shadow: 0 0 16px rgba(120, 242, 255, 0.52);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.32);
+            border-radius: 50%;
+            background: #d8ffff;
+            box-shadow: 0 0 16px rgba(120, 242, 255, 0.52);
+            cursor: pointer;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .toggle-label {
+            font-size: 13px;
+            color: #edf6ff;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 28px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .toggle-switch::after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-switch.on {
+            background: linear-gradient(90deg, rgba(120, 242, 255, 0.24), rgba(120, 242, 255, 0.7));
+            border-color: rgba(120, 242, 255, 0.28);
+        }
+
+        .toggle-switch.on::after {
+            transform: translateX(20px);
+        }
+
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 10px;
+        }
+
+        input[type="color"] {
+            width: 56px;
+            height: 40px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+        }
+
+        .palette-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .palette-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease;
+        }
+
+        .palette-swatch:hover {
+            transform: translateY(-2px) scale(1.03);
+        }
+
+        .palette-swatch.active {
+            border-color: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 0 14px rgba(255, 255, 255, 0.22);
+        }
+
+        .performance-note {
+            margin-top: 16px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.04);
+            font-size: 11px;
+            line-height: 1.7;
+            color: var(--text-muted);
+        }
+
+        .performance-note.warn {
+            border-color: rgba(255, 200, 117, 0.18);
+            background: rgba(255, 182, 90, 0.08);
+        }
+
+        .performance-note.danger {
+            border-color: rgba(255, 140, 166, 0.22);
+            background: rgba(255, 140, 166, 0.08);
+        }
+
+        .footer-tips {
+            padding: 18px 28px 28px;
+            font-size: 11px;
+            line-height: 1.8;
+            color: var(--text-faint);
+        }
+
+        .footer-tips b {
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 920px) {
+            html,
+            body {
+                overflow: auto;
+            }
+
+            body {
+                min-height: 100%;
+                overflow: hidden;
+            }
+
+            #ui-panel {
+                width: 100%;
+                max-height: 48vh;
+                border-right: 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            .status-strip,
+            .preset-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .shape-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .panel-header,
+            .section,
+            .footer-tips {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .shape-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+<aside id="ui-panel">
+    <div class="panel-header">
+        <div class="eyebrow">Fractal Museum Demo</div>
+        <h1>分形创世实验舱</h1>
+        <p>把简单几何放进递归规则里，让观众在一块屏幕上亲手生成会呼吸、会发光的数学景观。</p>
+        <div class="status-strip">
+            <div class="status-card">
+                <span>预计节点</span>
+                <strong id="metric-nodes">3,906</strong>
+                <em id="metric-branch">平均分裂 5.0</em>
+            </div>
+            <div class="status-card">
+                <span>渲染模式</span>
+                <strong id="metric-mode">辉光全开</strong>
+                <em id="metric-state">画面正在以完整效果运行。</em>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">① 灵感预设</div>
+        <div class="preset-grid" id="presetRow"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">② 基础生命体选择</div>
+        <div class="shape-grid" id="shapeGrid">
+            <button class="shape-btn" data-shape="triangle" type="button">三角形</button>
+            <button class="shape-btn" data-shape="circle" type="button">圆形</button>
+            <button class="shape-btn" data-shape="square" type="button">正方形</button>
+            <button class="shape-btn" data-shape="pentagon" type="button">五边形</button>
+            <button class="shape-btn" data-shape="hexagon" type="button">六边形</button>
+            <button class="shape-btn" data-shape="star5" type="button">五角星</button>
+            <button class="shape-btn" data-shape="cross4" type="button">四芒星</button>
+            <button class="shape-btn" data-shape="flower" type="button">樱花瓣</button>
+        </div>
+        <div class="queue-label">层级队列 · 拖拽改变各层交替顺序</div>
+        <div id="shape-queue"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">③ 分形算法引擎</div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">繁衍深度</span>
+                <span class="param-val" id="v-depth">5 级</span>
+            </div>
+            <input type="range" id="s-depth" min="0" max="6" step="1" value="5">
+            <div class="param-hint">层数越深，画面越密，节点数量也会指数级增长。</div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">基因收缩率</span>
+                <span class="param-val" id="v-scale">0.50</span>
+            </div>
+            <input type="range" id="s-scale" min="0.20" max="0.75" step="0.01" value="0.50">
+            <div class="param-hint">控制子代与母体的比例，决定图案是舒展还是堆叠。</div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">分裂数覆写</span>
+                <span class="param-val" id="v-branches">自动</span>
+            </div>
+            <input type="range" id="s-branches" min="0" max="10" step="1" value="0">
+            <div class="param-hint">0 表示跟随图形天然顶点，手动提升能得到更强的放射感。</div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">层间旋转角</span>
+                <span class="param-val" id="v-layerRot">0°</span>
+            </div>
+            <input type="range" id="s-layerRot" min="0" max="180" step="1" value="0">
+            <div class="param-hint">给每一层额外的旋转偏移，容易形成法阵和漩涡。</div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">螺旋因子</span>
+                <span class="param-val" id="v-spiral">0.00</span>
+            </div>
+            <input type="range" id="s-spiral" min="-1.0" max="1.0" step="0.01" value="0">
+            <div class="param-hint">控制子代向内卷曲还是向外旋开，适合做能量感变化。</div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">扩散半径比</span>
+                <span class="param-val" id="v-spread">1.00</span>
+            </div>
+            <input type="range" id="s-spread" min="0.3" max="2.0" step="0.01" value="1.0">
+            <div class="param-hint">决定子代距离中心多远，小值更像核聚变，大值更像星云扩散。</div>
+        </div>
+
+        <div class="toggle-row">
+            <span class="toggle-label">中心子代</span>
+            <button class="toggle-switch" id="t-center" type="button" aria-pressed="false"></button>
+        </div>
+        <div class="param-hint" style="margin-top:-6px;margin-bottom:14px;">在母体中心再生出一个缩小副本，画面会更浓密。</div>
+
+        <div class="toggle-row">
+            <span class="toggle-label">交替镜像翻转</span>
+            <button class="toggle-switch" id="t-mirror" type="button" aria-pressed="false"></button>
+        </div>
+        <div class="param-hint" style="margin-top:-6px;">奇偶层左右镜像，能强化万花筒和对称法阵的观感。</div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">④ 动态参数</div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">全局自转速度</span>
+                <span class="param-val" id="v-spin">0.24</span>
+            </div>
+            <input type="range" id="s-spin" min="0" max="2.0" step="0.01" value="0.24">
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">呼吸脉动强度</span>
+                <span class="param-val" id="v-pulse">0.06</span>
+            </div>
+            <input type="range" id="s-pulse" min="0" max="0.3" step="0.01" value="0.06">
+            <div class="param-hint">给每层尺寸附加轻微起伏，让图形不只是静止堆叠。</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">⑤ 色彩基因</div>
+
+        <div class="color-row">
+            <input type="color" id="colorPicker" value="#7df1ff">
+            <div>
+                <div class="param-label">主色相</div>
+                <div class="param-hint" style="margin-top:2px;">发光、背景和深层渐变都会跟随这个色相统一漂移。</div>
+            </div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">色相偏移速率</span>
+                <span class="param-val" id="v-hueShift">22</span>
+            </div>
+            <input type="range" id="s-hueShift" min="0" max="60" step="1" value="22">
+            <div class="param-hint">数值越高，层与层之间的虹彩差异越明显。</div>
+        </div>
+
+        <div class="queue-label">快捷调色盘</div>
+        <div class="palette-row" id="paletteRow"></div>
+
+        <div class="performance-note" id="performance-note">
+            当前节点预算充足，画面会使用完整辉光、背景星尘和叶端火花。
+        </div>
+    </div>
+
+    <div class="footer-tips">
+        <b>操作提示：</b>先点一个预设建立气质，再去改图形队列和参数。拖拽队列能直接改变每层使用的形状顺序，通常比单独拉一个参数更快得到“好看”的结果。
+    </div>
+</aside>
+
+<script>
+const SHAPE_META = {
+    triangle: { name: '三角形', branches: 3 },
+    circle: { name: '圆形', branches: 4 },
+    square: { name: '正方形', branches: 4 },
+    pentagon: { name: '五边形', branches: 5 },
+    hexagon: { name: '六边形', branches: 6 },
+    star5: { name: '五角星', branches: 5 },
+    cross4: { name: '四芒星', branches: 4 },
+    flower: { name: '樱花瓣', branches: 5 }
+};
+
+const PALETTES = [
+    '#7df1ff', '#a968ff', '#ff6b8e', '#ffba52', '#6effa7',
+    '#9fe4ff', '#ffd6f5', '#d3ff6f', '#7ca3ff', '#ff8f66'
+];
+
+const DEFAULT_STYLE = {
+    mode: 'radial',
+    maxBranches: null,
+    branchFloor: 0,
+    arcDeg: 360,
+    directionDeg: -90,
+    offsetXScale: 1,
+    offsetYScale: 1,
+    lift: 0,
+    swayDeg: 0,
+    radiusScaleDesktop: 0.31,
+    radiusScaleMobile: 0.24,
+    centerYBias: 0.53,
+    alternateRotation: 0,
+    branchJitterDeg: 0
+};
+
+const PRESETS = [
+    {
+        id: 'nebula',
+        name: '星云晶花',
+        desc: '冷色虹辉 · 适合第一眼吸引',
+        color: '#7df1ff',
+        shapes: ['triangle', 'flower', 'circle'],
+        params: { depth: 5, scale: 0.49, branches: 0, layerRot: 12, spiral: 0.16, spread: 1.12, center: false, mirror: false, spin: 0.22, pulse: 0.05, hueShift: 14 },
+        layout: {}
+    },
+    {
+        id: 'mandala',
+        name: '法阵绽放',
+        desc: '高对称度 · 更适合法阵与万花筒',
+        color: '#ff8ddd',
+        shapes: ['star5', 'circle', 'cross4'],
+        params: { depth: 5, scale: 0.44, branches: 0, layerRot: 29, spiral: -0.06, spread: 0.94, center: true, mirror: true, spin: 0.12, pulse: 0.04, hueShift: 18 },
+        layout: { alternateRotation: 12 }
+    },
+    {
+        id: 'coral',
+        name: '珊瑚脉络',
+        desc: '暖色扩散 · 更像生长中的有机体',
+        color: '#ff8f66',
+        shapes: ['flower', 'pentagon', 'circle'],
+        params: { depth: 5, scale: 0.53, branches: 0, layerRot: 10, spiral: 0.35, spread: 1.22, center: false, mirror: false, spin: 0.18, pulse: 0.08, hueShift: 16 },
+        layout: { branchJitterDeg: 5 }
+    },
+    {
+        id: 'prism',
+        name: '棱镜风暴',
+        desc: '高张力放射 · 适合强烈视觉冲击',
+        color: '#a968ff',
+        shapes: ['hexagon', 'triangle', 'square'],
+        params: { depth: 5, scale: 0.42, branches: 7, layerRot: 24, spiral: 0.24, spread: 1.38, center: false, mirror: true, spin: 0.32, pulse: 0.05, hueShift: 28 },
+        layout: { branchJitterDeg: 2 }
+    },
+    {
+        id: 'tree',
+        name: '分形树',
+        desc: '向上生长 · 更像枝干与冠层',
+        color: '#8eea7d',
+        shapes: ['triangle', 'flower', 'circle'],
+        params: { depth: 6, scale: 0.62, branches: 3, layerRot: 3, spiral: -0.22, spread: 1.08, center: false, mirror: false, spin: 0.05, pulse: 0.03, hueShift: 8 },
+        layout: { mode: 'tree', maxBranches: 3, arcDeg: 68, directionDeg: -90, offsetXScale: 0.78, offsetYScale: 1.18, lift: 0.58, swayDeg: 8, radiusScaleDesktop: 0.12, radiusScaleMobile: 0.1, centerYBias: 0.88, branchJitterDeg: 3 }
+    },
+    {
+        id: 'snowflake',
+        name: '分形雪花',
+        desc: '六向对称 · 更接近冰晶展开',
+        color: '#b4e7ff',
+        shapes: ['hexagon', 'cross4', 'circle'],
+        params: { depth: 4, scale: 0.49, branches: 6, layerRot: 8, spiral: 0.02, spread: 1.0, center: false, mirror: true, spin: 0.08, pulse: 0.02, hueShift: 10 },
+        layout: { mode: 'snowflake', maxBranches: 6, branchFloor: 6, arcDeg: 360, directionDeg: -90, offsetXScale: 1, offsetYScale: 1, radiusScaleDesktop: 0.31, radiusScaleMobile: 0.24, centerYBias: 0.52, alternateRotation: 30, branchJitterDeg: 1.5 }
+    }
+];
+
+const state = {
+    selectedShapes: ['triangle', 'flower', 'circle'],
+    baseColor: '#7df1ff',
+    activePreset: 'nebula',
+    params: {
+        depth: 5,
+        scale: 0.49,
+        branches: 0,
+        layerRot: 12,
+        spiral: 0.16,
+        spread: 1.12,
+        center: false,
+        mirror: false,
+        spin: 0.22,
+        pulse: 0.05,
+        hueShift: 14
+    },
+    layout: { ...DEFAULT_STYLE, ...(PRESETS.find(preset => preset.id === 'nebula')?.layout || {}) }
+};
+
+const cur = {
+    depth: state.params.depth,
+    scale: state.params.scale
+};
+
+const scene = {
+    stars: [],
+    budget: null,
+    baseHue: 0,
+    limits: { depthMax: 6, branchMax: 10 },
+    spriteCache: new Map()
+};
+
+const sliders = [
+    ['s-depth', 'v-depth', 'depth', value => `${value} 级`],
+    ['s-scale', 'v-scale', 'scale', value => Number(value).toFixed(2)],
+    ['s-branches', 'v-branches', 'branches', value => Number(value) === 0 ? '自动' : value],
+    ['s-layerRot', 'v-layerRot', 'layerRot', value => `${value}°`],
+    ['s-spiral', 'v-spiral', 'spiral', value => Number(value).toFixed(2)],
+    ['s-spread', 'v-spread', 'spread', value => Number(value).toFixed(2)],
+    ['s-spin', 'v-spin', 'spin', value => Number(value).toFixed(2)],
+    ['s-pulse', 'v-pulse', 'pulse', value => Number(value).toFixed(2)],
+    ['s-hueShift', 'v-hueShift', 'hueShift', value => value]
+];
+
+let dragSrcIdx = null;
+
+function setup() {
+    const canvas = createCanvas(windowWidth, windowHeight);
+    canvas.position(0, 0);
+    canvas.style('display', 'block');
+    canvas.style('z-index', '0');
+    colorMode(HSB, 360, 100, 100, 1);
+    angleMode(RADIANS);
+    pixelDensity(min(window.devicePixelRatio || 1, 1.5));
+    buildStarfield();
+    renderPresets();
+    bindUI();
+    renderQueue();
+    renderPalette();
+    syncUIFromState();
+    refreshDerivedState(true);
+}
+
+function draw() {
+    const baseHue = scene.baseHue;
+    const budget = scene.budget;
+    const clockTime = millis() * 0.001;
+    const layoutCfg = state.layout;
+
+    cur.depth = lerp(cur.depth, budget.effectiveDepth, 0.1);
+    cur.scale = lerp(cur.scale, state.params.scale, 0.12);
+
+    drawBackdrop(baseHue, budget, clockTime);
+
+    const sceneBox = getSceneViewport();
+    const centerX = sceneBox.x + sceneBox.w * 0.5;
+    const centerY = sceneBox.y + sceneBox.h * layoutCfg.centerYBias;
+    const initialRadius = max(42, min(sceneBox.w, sceneBox.h) * (windowWidth < 920 ? layoutCfg.radiusScaleMobile : layoutCfg.radiusScaleDesktop));
+
+    push();
+    translate(centerX, centerY);
+    rotate(clockTime * 0.45 * state.params.spin * 6.5);
+    drawFractal(0, 0, initialRadius, cur.depth, cur.scale, baseHue, 0, budget.qualityMode, clockTime);
+    pop();
+
+    drawSceneFrame(sceneBox, baseHue, budget.qualityMode);
+}
+
+function drawBackdrop(baseHue, budget, clockTime) {
+    background((baseHue + 240) % 360, 40, 5, 1);
+
+    const ctx = drawingContext;
+    const orbCount = budget.qualityMode === 'protected' ? 2 : 4;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < orbCount; i++) {
+        const nx = 0.16 + i * 0.18 + sin(clockTime * 0.09 + i * 1.4) * 0.05;
+        const ny = 0.18 + (i % 2) * 0.36 + cos(clockTime * 0.11 + i * 1.7) * 0.06;
+        const x = width * nx;
+        const y = height * ny;
+        const radius = min(width, height) * (0.22 + i * 0.05);
+        const hueA = (baseHue + i * 28 + clockTime * 6) % 360;
+        const hueB = (hueA + 46) % 360;
+        const gradient = ctx.createRadialGradient(x, y, radius * 0.06, x, y, radius);
+        gradient.addColorStop(0, hsbToRgba(hueA, 78, 96, 0.14));
+        gradient.addColorStop(0.5, hsbToRgba(hueB, 72, 58, 0.09));
+        gradient.addColorStop(1, hsbToRgba(hueB, 60, 8, 0));
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    }
+    ctx.restore();
+
+    drawStarfield(baseHue, budget.qualityMode, clockTime);
+
+    ctx.save();
+    const vignette = ctx.createRadialGradient(width * 0.52, height * 0.56, min(width, height) * 0.14, width * 0.52, height * 0.56, max(width, height) * 0.82);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(2,4,10,0.72)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+}
+
+function drawStarfield(baseHue, qualityMode, clockTime) {
+    const ctx = drawingContext;
+    const count = qualityMode === 'cinematic' ? scene.stars.length : qualityMode === 'balanced' ? Math.floor(scene.stars.length * 0.68) : Math.floor(scene.stars.length * 0.45);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    for (let i = 0; i < count; i++) {
+        const star = scene.stars[i];
+        const alpha = star.alphaBase + sin(clockTime * star.speed + star.phase) * star.alphaSwing;
+        const size = star.size + sin(clockTime * star.speed * 1.6 + star.phase) * 0.22;
+        const hueValue = (baseHue + star.hueOffset + sin(clockTime * 0.2 + star.phase) * 10 + 360) % 360;
+
+        ctx.beginPath();
+        ctx.fillStyle = hsbToRgba(hueValue, 24, 98, constrain(alpha, 0.08, 0.95));
+        ctx.arc(star.x * width, star.y * height, max(0.3, size), 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+function drawSceneFrame(sceneBox, baseHue, qualityMode) {
+    const ctx = drawingContext;
+    const frameAlpha = qualityMode === 'protected' ? 0.08 : 0.12;
+
+    ctx.save();
+    const gradient = ctx.createLinearGradient(sceneBox.x, sceneBox.y, sceneBox.x + sceneBox.w, sceneBox.y + sceneBox.h);
+    gradient.addColorStop(0, hsbToRgba((baseHue + 10) % 360, 70, 88, frameAlpha));
+    gradient.addColorStop(0.5, 'rgba(255,255,255,0)');
+    gradient.addColorStop(1, hsbToRgba((baseHue + 50) % 360, 60, 76, frameAlpha));
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([10, 16]);
+    ctx.strokeRect(sceneBox.x + 14, sceneBox.y + 14, sceneBox.w - 28, sceneBox.h - 28);
+    ctx.restore();
+}
+
+function drawFractal(x, y, radius, depthRemaining, scaleFactor, baseHue, layer, qualityMode, clockTime) {
+    const minDepth = qualityMode === 'protected' ? 0.28 : qualityMode === 'balanced' ? 0.18 : 0.08;
+    const minRadius = qualityMode === 'protected' ? 2.4 : qualityMode === 'balanced' ? 1.5 : 0.9;
+    if (depthRemaining < minDepth || radius < minRadius) {
+        return;
+    }
+
+    const shape = state.selectedShapes[layer % state.selectedShapes.length];
+    const renderMode = resolveNodeRenderMode(radius, layer, depthRemaining, qualityMode);
+
+    push();
+    translate(x, y);
+
+    if (state.params.mirror && layer % 2 === 1) {
+        scale(-1, 1);
+    }
+
+    if (layer > 0) {
+        rotate(radians(state.params.layerRot) * layer);
+        if (state.layout.alternateRotation && layer % 2 === 1) {
+            rotate(radians(state.layout.alternateRotation));
+        }
+    }
+
+    let pulseFactor = 1;
+    if (state.params.pulse > 0) {
+        pulseFactor = 1 + sin(clockTime * 2.1 + layer * 1.28) * state.params.pulse;
+    }
+
+    const r = radius * pulseFactor;
+    const fractionalFade = constrain(depthRemaining, 0, 1);
+
+    if (depthRemaining < 1) {
+        scale(fractionalFade);
+    }
+
+    const hueValue = (baseHue + layer * state.params.hueShift + sin(clockTime + layer * 0.6) * 7 + 360) % 360;
+    const brightness = min(98, 48 + layer * 6.5);
+
+    if (renderMode === 'vector') {
+        drawShapeHalo(shape, r, hueValue, brightness, layer, qualityMode);
+        drawShapeCore(shape, r, hueValue, brightness, layer, qualityMode, fractionalFade);
+    } else if (renderMode === 'sprite') {
+        drawShapeSprite(shape, r, hueValue, brightness, layer, qualityMode, fractionalFade);
+    } else {
+        drawSimpleNode(r, hueValue, brightness, layer, fractionalFade);
+    }
+
+    if (depthRemaining < 1.15 && qualityMode === 'cinematic' && renderMode === 'vector' && r > 5) {
+        drawLeafSpark(r, hueValue, layer, clockTime);
+    }
+
+    if (depthRemaining > 0) {
+        const branches = resolveBranchCount(shape);
+        const childRadius = r * scaleFactor;
+        const baseOffset = max(r - childRadius * 0.82, r * 0.18) * state.params.spread;
+        const spiralOffset = baseOffset * (1 + state.params.spiral * layer * 0.12);
+        const nextDepth = depthRemaining - 1;
+
+        const branchTargets = resolveBranchTargets(shape, layer, branches, spiralOffset, clockTime);
+        for (const target of branchTargets) {
+            drawFractal(
+                target.x,
+                target.y,
+                childRadius,
+                nextDepth,
+                scaleFactor,
+                baseHue,
+                layer + 1,
+                qualityMode,
+                clockTime
+            );
+        }
+
+        if (state.params.center && !(qualityMode === 'protected' && layer >= 2)) {
+            drawFractal(0, 0, childRadius * 0.78, nextDepth, scaleFactor, baseHue, layer + 1, qualityMode, clockTime);
+        }
+    }
+
+    pop();
+}
+
+function drawShapeHalo(shape, radius, hueValue, brightness, layer, qualityMode) {
+    if (qualityMode === 'protected' && radius < 28) {
+        return;
+    }
+
+    const ctx = drawingContext;
+    const glowStrength = qualityMode === 'cinematic' ? min(90, radius * 0.92 + layer * 6) : min(52, radius * 0.52 + layer * 4);
+    const glowAlpha = map(layer, 0, 7, 0.26, 0.05, true);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.shadowBlur = glowStrength;
+    ctx.shadowColor = hsbToRgba(hueValue, 82, 100, glowAlpha + 0.08);
+    ctx.fillStyle = createShapeGradient(ctx, radius * 1.08, hueValue, min(100, brightness + 10), glowAlpha);
+    traceShapePath(ctx, shape, radius * 1.06, qualityMode);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawShapeCore(shape, radius, hueValue, brightness, layer, qualityMode, alphaScale) {
+    const ctx = drawingContext;
+    const alphaFalloff = map(layer, 0, 7, 1, 0.42, true);
+    const alpha = (qualityMode === 'protected' ? 0.9 : 0.96) * alphaScale * alphaFalloff;
+
+    ctx.save();
+    ctx.fillStyle = createShapeGradient(ctx, radius, hueValue, brightness, alpha);
+    ctx.strokeStyle = hsbToRgba((hueValue + 22) % 360, 50, min(100, brightness + 24), qualityMode === 'protected' ? 0.08 : 0.22);
+    ctx.lineWidth = radius > 18 ? map(radius, 18, 240, 0.5, 2.1, true) : 0.3;
+    traceShapePath(ctx, shape, radius, qualityMode);
+    ctx.fill();
+
+    if (qualityMode !== 'protected' || radius > 18) {
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+function drawLeafSpark(radius, hueValue, layer, clockTime) {
+    const ctx = drawingContext;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = hsbToRgba((hueValue + 16) % 360, 70, 100, 0.45);
+
+    for (let i = 0; i < 3; i++) {
+        const angle = clockTime * 0.9 + layer * 0.45 + i * (TWO_PI / 3);
+        const dist = radius * (0.16 + i * 0.05);
+        const size = max(1.1, radius * 0.045);
+
+        ctx.beginPath();
+        ctx.fillStyle = hsbToRgba((hueValue + 18 + i * 10) % 360, 42, 100, 0.42);
+        ctx.arc(cos(angle) * dist, sin(angle) * dist, size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+function resolveNodeRenderMode(radius, layer, depthRemaining, qualityMode) {
+    if (qualityMode === 'protected') {
+        if (radius < 10 || layer >= 4 || depthRemaining < 0.85) {
+            return 'simple';
+        }
+        if (radius < 28 || layer >= 2) {
+            return 'sprite';
+        }
+        return 'vector';
+    }
+
+    if (qualityMode === 'balanced') {
+        if (radius < 6 || layer >= 6 || depthRemaining < 0.55) {
+            return 'simple';
+        }
+        if (radius < 18 || layer >= 4) {
+            return 'sprite';
+        }
+        return 'vector';
+    }
+
+    if (radius < 4.5 || (layer >= 6 && depthRemaining < 0.7)) {
+        return 'simple';
+    }
+
+    if (radius < 14 || layer >= 5) {
+        return 'sprite';
+    }
+
+    return 'vector';
+}
+
+function drawShapeSprite(shape, radius, hueValue, brightness, layer, qualityMode, alphaScale) {
+    const tier = radius < 12 ? 'small' : radius < 24 ? 'medium' : 'large';
+    const sprite = getShapeSprite(shape, qualityMode, tier);
+    const alpha = map(layer, 0, 7, 0.94, 0.42, true) * alphaScale;
+    const drawSize = radius * (tier === 'large' ? 2.85 : tier === 'medium' ? 2.6 : 2.35);
+
+    push();
+    imageMode(CENTER);
+    tint(hueValue, 72, min(100, brightness + 10), alpha);
+    image(sprite, 0, 0, drawSize, drawSize);
+    noTint();
+    pop();
+}
+
+function drawSimpleNode(radius, hueValue, brightness, layer, alphaScale) {
+    const alpha = map(layer, 0, 7, 0.78, 0.28, true) * alphaScale;
+    const orbRadius = max(1.1, radius * 1.08);
+
+    noStroke();
+    fill(hueValue, 52, min(100, brightness + 16), alpha);
+    circle(0, 0, orbRadius * 2);
+}
+
+function getShapeSprite(shape, qualityMode, tier) {
+    const key = `${shape}-${qualityMode}-${tier}`;
+    if (scene.spriteCache.has(key)) {
+        return scene.spriteCache.get(key);
+    }
+
+    const size = tier === 'large' ? 176 : tier === 'medium' ? 120 : 72;
+    const radius = tier === 'large' ? 40 : tier === 'medium' ? 26 : 15;
+    const gfx = createGraphics(size, size);
+    gfx.pixelDensity(1);
+    gfx.clear();
+
+    const ctx = gfx.drawingContext;
+    ctx.save();
+    ctx.translate(size / 2, size / 2);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.shadowBlur = tier === 'large' ? 28 : tier === 'medium' ? 18 : 10;
+    ctx.shadowColor = qualityMode === 'protected' ? 'rgba(255,255,255,0.26)' : 'rgba(255,255,255,0.42)';
+
+    const gradient = ctx.createRadialGradient(-radius * 0.22, -radius * 0.28, radius * 0.08, 0, 0, radius * 1.24);
+    gradient.addColorStop(0, 'rgba(255,255,255,0.95)');
+    gradient.addColorStop(0.38, 'rgba(255,255,255,0.84)');
+    gradient.addColorStop(0.8, 'rgba(255,255,255,0.42)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0.08)');
+    ctx.fillStyle = gradient;
+    traceShapePath(ctx, shape, radius, qualityMode === 'cinematic' && tier === 'large' ? 'balanced' : 'protected');
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = tier === 'small' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.24)';
+    ctx.lineWidth = tier === 'large' ? 1.4 : 1;
+    ctx.stroke();
+    ctx.restore();
+
+    scene.spriteCache.set(key, gfx);
+    return gfx;
+}
+
+function traceShapePath(ctx, shape, radius, qualityMode) {
+    switch (shape) {
+        case 'triangle':
+            tracePolygon(ctx, 3, radius, -HALF_PI);
+            break;
+        case 'square': {
+            const side = radius * Math.SQRT2;
+            ctx.beginPath();
+            ctx.rect(-side / 2, -side / 2, side, side);
+            break;
+        }
+        case 'circle':
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            break;
+        case 'pentagon':
+            tracePolygon(ctx, 5, radius, -HALF_PI);
+            break;
+        case 'hexagon':
+            tracePolygon(ctx, 6, radius, -HALF_PI);
+            break;
+        case 'star5':
+            traceStar(ctx, radius * 0.4, radius, 5);
+            break;
+        case 'cross4':
+            traceStar(ctx, radius * 0.16, radius, 4);
+            break;
+        case 'flower':
+            traceFlower(ctx, radius, qualityMode);
+            break;
+    }
+}
+
+function tracePolygon(ctx, sides, radius, startAngle) {
+    ctx.beginPath();
+    for (let i = 0; i < sides; i++) {
+        const angle = startAngle + i * (Math.PI * 2 / sides);
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    ctx.closePath();
+}
+
+function traceStar(ctx, innerRadius, outerRadius, points) {
+    const step = Math.PI / points;
+    ctx.beginPath();
+    for (let i = 0; i < points * 2; i++) {
+        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        const angle = -HALF_PI + i * step;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    ctx.closePath();
+}
+
+function traceFlower(ctx, radius, qualityMode) {
+    const step = qualityMode === 'protected' ? 0.18 : radius < 30 ? 0.11 : 0.07;
+    ctx.beginPath();
+
+    for (let angle = -HALF_PI, index = 0; angle <= Math.PI * 1.5 + step; angle += step, index++) {
+        const wave = Math.sin(5 * (angle + HALF_PI));
+        const rr = radius * 0.74 + wave * (radius * 0.26);
+        const x = Math.cos(angle) * rr;
+        const y = Math.sin(angle) * rr;
+        if (index === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+
+    ctx.closePath();
+}
+
+function createShapeGradient(ctx, radius, hueValue, brightness, alpha) {
+    const gradient = ctx.createRadialGradient(-radius * 0.28, -radius * 0.34, radius * 0.05, 0, 0, radius * 1.18);
+    gradient.addColorStop(0, hsbToRgba((hueValue - 12 + 360) % 360, 38, 100, alpha));
+    gradient.addColorStop(0.34, hsbToRgba(hueValue, 74, min(100, brightness + 12), alpha));
+    gradient.addColorStop(0.78, hsbToRgba((hueValue + 22) % 360, 88, max(18, brightness - 8), alpha * 0.94));
+    gradient.addColorStop(1, hsbToRgba((hueValue + 42) % 360, 82, 14, alpha * 0.74));
+    return gradient;
+}
+
+function resolveBranchCount(shape) {
+    const naturalBranches = SHAPE_META[shape].branches;
+    const layoutCfg = state.layout;
+    let branches = state.params.branches > 0 ? state.params.branches : naturalBranches;
+
+    if (layoutCfg.branchFloor) {
+        branches = max(branches, layoutCfg.branchFloor);
+    }
+
+    if (layoutCfg.maxBranches) {
+        branches = min(branches, layoutCfg.maxBranches);
+    }
+
+    return max(1, Math.round(branches));
+}
+
+function resolveBranchTargets(shape, layer, branches, spiralOffset, clockTime) {
+    const layoutCfg = state.layout;
+    const mode = layoutCfg.mode || 'radial';
+
+    if (mode === 'tree') {
+        const actualBranches = min(branches, layoutCfg.maxBranches || 3);
+        const arc = radians(layoutCfg.arcDeg || 76);
+        const sway = sin(clockTime * 0.45 + layer * 0.48) * radians(layoutCfg.swayDeg || 0) * min(1, layer * 0.22 + 0.2);
+        const direction = radians(layoutCfg.directionDeg || -90) + sway;
+        const targets = [];
+
+        for (let i = 0; i < actualBranches; i++) {
+            const spread = actualBranches === 1 ? 0 : map(i, 0, actualBranches - 1, -0.5, 0.5);
+            const jitter = sin(clockTime * 0.8 + layer * 0.7 + i * 1.9) * radians(layoutCfg.branchJitterDeg || 0);
+            const angle = direction + spread * arc + jitter;
+            const distance = spiralOffset * (1 + abs(spread) * 0.1);
+            targets.push({
+                x: cos(angle) * distance * layoutCfg.offsetXScale,
+                y: sin(angle) * distance * layoutCfg.offsetYScale - spiralOffset * layoutCfg.lift
+            });
+        }
+
+        return targets;
+    }
+
+    const startAngle = getShapeStartAngle(shape, clockTime);
+    const actualBranches = layoutCfg.branchFloor ? max(branches, layoutCfg.branchFloor) : branches;
+    const rotationOffset = mode === 'snowflake' ? (layer % 2 === 1 ? radians(layoutCfg.alternateRotation || 0) : 0) : 0;
+    const targets = [];
+
+    for (let i = 0; i < actualBranches; i++) {
+        const jitter = sin(clockTime * 0.55 + layer * 0.35 + i * 0.9) * radians(layoutCfg.branchJitterDeg || 0);
+        const angle = startAngle + rotationOffset + i * (TWO_PI / actualBranches) + jitter;
+        const radialScale = mode === 'snowflake' && i % 2 === 1 ? 0.94 : 1;
+        const distance = spiralOffset * radialScale;
+        targets.push({
+            x: cos(angle) * distance * layoutCfg.offsetXScale,
+            y: sin(angle) * distance * layoutCfg.offsetYScale
+        });
+    }
+
+    return targets;
+}
+
+function getShapeStartAngle(shape, clockTime) {
+    if (shape === 'square' || shape === 'cross4') {
+        return Math.PI / 4;
+    }
+    if (shape === 'circle') {
+        return clockTime * 0.22;
+    }
+    return -HALF_PI;
+}
+
+function computeRenderBudget() {
+    const averageBranches = state.selectedShapes.reduce((sum, shape) => sum + resolveBranchCount(shape), 0) / state.selectedShapes.length;
+    const branchFactor = averageBranches + (state.params.center ? 1 : 0);
+    const estimate = estimateNodes(state.params.depth, branchFactor);
+    let effectiveDepth = state.params.depth;
+    let qualityMode = 'cinematic';
+    let modeLabel = '辉光全开';
+    let detail = '画面正在以完整效果运行。';
+    let noteClass = '';
+
+    if (estimate > 14000) {
+        qualityMode = 'balanced';
+        modeLabel = '平衡模式';
+        detail = '系统会减少深层细节和小节点辉光，优先保证流畅。';
+        noteClass = 'warn';
+    }
+
+    if (estimate > 32000) {
+        qualityMode = 'protected';
+        modeLabel = '保护模式';
+        detail = '系统会主动限制递归细节和部分子代，避免高复杂度组合拖慢展项。';
+        noteClass = 'danger';
+    }
+
+    while (estimateNodes(effectiveDepth, branchFactor) > 50000 && effectiveDepth > 1) {
+        effectiveDepth -= 0.5;
+    }
+
+    return {
+        estimate,
+        branchFactor,
+        qualityMode,
+        modeLabel,
+        detail,
+        noteClass,
+        effectiveDepth: max(0, effectiveDepth),
+        isReduced: effectiveDepth < state.params.depth
+    };
+}
+
+function estimateNodes(depth, branchFactor) {
+    let total = 0;
+    let layerCount = 1;
+    const roundedDepth = Math.max(0, Math.ceil(depth));
+
+    for (let i = 0; i <= roundedDepth; i++) {
+        total += layerCount;
+        layerCount *= branchFactor;
+    }
+
+    return Math.round(total);
+}
+
+function updateBudgetUI(budget) {
+    document.getElementById('metric-nodes').textContent = formatNumber(budget.estimate);
+    document.getElementById('metric-branch').textContent = `平均分裂 ${budget.branchFactor.toFixed(1)}`;
+    document.getElementById('metric-mode').textContent = budget.modeLabel;
+    document.getElementById('metric-state').textContent = budget.isReduced
+        ? `当前组合过重，系统将深度临时收敛到 ${budget.effectiveDepth.toFixed(1)} 级。`
+        : `${budget.detail} 深度上限 ${scene.limits.depthMax}，分裂上限 ${scene.limits.branchMax}。`;
+
+    const note = document.getElementById('performance-note');
+    note.classList.remove('warn', 'danger');
+    if (budget.noteClass) {
+        note.classList.add(budget.noteClass);
+    }
+    note.textContent = budget.isReduced
+        ? `当前组合预计 ${formatNumber(budget.estimate)} 个节点，系统已自动削峰，避免高复杂度场景卡顿。当前建议上限：深度 ${scene.limits.depthMax}，分裂 ${scene.limits.branchMax}。`
+        : `${budget.detail} 当前建议上限：深度 ${scene.limits.depthMax}，分裂 ${scene.limits.branchMax}。`;
+}
+
+function computeDynamicLimits() {
+    const effectiveBranches = state.selectedShapes.reduce((sum, shape) => sum + resolveBranchCount(shape), 0) / state.selectedShapes.length;
+    let depthMax = 6;
+    let branchMax = 10;
+
+    if (state.layout.mode === 'tree') {
+        depthMax = 6;
+        branchMax = min(branchMax, state.layout.maxBranches || 3);
+    }
+
+    if (state.layout.mode === 'snowflake') {
+        depthMax = min(depthMax, 5);
+        branchMax = min(branchMax, state.layout.maxBranches || 6);
+    }
+
+    if (state.params.center) {
+        depthMax = Math.min(depthMax, 5);
+        branchMax = Math.min(branchMax, 8);
+    }
+
+    if (effectiveBranches >= 8) {
+        depthMax = Math.min(depthMax, 4);
+    } else if (effectiveBranches >= 6) {
+        depthMax = Math.min(depthMax, 5);
+    }
+
+    if (state.params.depth >= 6) {
+        branchMax = Math.min(branchMax, 5);
+    } else if (state.params.depth >= 5) {
+        branchMax = Math.min(branchMax, 7);
+    }
+
+    return { depthMax, branchMax };
+}
+
+function refreshDerivedState(syncControls = false) {
+    scene.limits = computeDynamicLimits();
+
+    const depthSlider = document.getElementById('s-depth');
+    const branchSlider = document.getElementById('s-branches');
+    depthSlider.max = String(scene.limits.depthMax);
+    branchSlider.max = String(scene.limits.branchMax);
+
+    let clamped = false;
+    if (state.params.depth > scene.limits.depthMax) {
+        state.params.depth = scene.limits.depthMax;
+        clamped = true;
+    }
+    if (state.params.branches > scene.limits.branchMax) {
+        state.params.branches = scene.limits.branchMax;
+        clamped = true;
+    }
+
+    scene.baseHue = hue(color(state.baseColor));
+    scene.budget = computeRenderBudget();
+
+    if (syncControls || clamped) {
+        syncParameterControls();
+    }
+
+    updateBudgetUI(scene.budget);
+}
+
+function renderPresets() {
+    const row = document.getElementById('presetRow');
+    row.innerHTML = '';
+
+    PRESETS.forEach(preset => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'preset-btn';
+        btn.dataset.preset = preset.id;
+        btn.innerHTML = `<span class="preset-name">${preset.name}</span><span class="preset-meta">${preset.desc}</span>`;
+        btn.addEventListener('click', () => applyPreset(preset.id));
+        row.appendChild(btn);
+    });
+}
+
+function renderPalette() {
+    const row = document.getElementById('paletteRow');
+    row.innerHTML = '';
+
+    PALETTES.forEach(hex => {
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
+        swatch.className = 'palette-swatch';
+        swatch.style.background = hex;
+        swatch.addEventListener('click', () => {
+            state.baseColor = hex;
+            state.activePreset = null;
+            syncUIFromState();
+            updatePresetActiveState();
+        });
+        row.appendChild(swatch);
+    });
+}
+
+function bindUI() {
+    sliders.forEach(([sliderId, valueId, key, formatter]) => {
+        const slider = document.getElementById(sliderId);
+        slider.addEventListener('input', () => {
+            state.params[key] = Number(slider.value);
+            state.activePreset = null;
+            document.getElementById(valueId).textContent = formatter(slider.value);
+            updatePresetActiveState();
+            refreshDerivedState();
+        });
+    });
+
+    document.getElementById('colorPicker').addEventListener('input', event => {
+        state.baseColor = event.target.value;
+        state.activePreset = null;
+        updatePaletteActiveState();
+        updatePresetActiveState();
+        refreshDerivedState();
+    });
+
+    bindToggle('t-center', 'center');
+    bindToggle('t-mirror', 'mirror');
+
+    document.querySelectorAll('.shape-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const shape = btn.dataset.shape;
+
+            if (state.selectedShapes.includes(shape)) {
+                if (state.selectedShapes.length > 1) {
+                    state.selectedShapes = state.selectedShapes.filter(item => item !== shape);
+                }
+            } else {
+                state.selectedShapes.push(shape);
+            }
+
+            state.activePreset = null;
+            updateShapeButtons();
+            updatePresetActiveState();
+            renderQueue();
+            refreshDerivedState();
+        });
+    });
+
+    const queue = document.getElementById('shape-queue');
+    queue.addEventListener('dragover', event => {
+        event.preventDefault();
+    });
+}
+
+function bindToggle(id, key) {
+    const button = document.getElementById(id);
+    button.addEventListener('click', () => {
+        state.params[key] = !state.params[key];
+        state.activePreset = null;
+        syncToggle(button, state.params[key]);
+        updatePresetActiveState();
+        refreshDerivedState(true);
+    });
+}
+
+function renderQueue() {
+    const queue = document.getElementById('shape-queue');
+    queue.innerHTML = '';
+
+    state.selectedShapes.forEach((shape, index) => {
+        const chip = document.createElement('div');
+        chip.className = 'queue-chip';
+        chip.draggable = true;
+        chip.dataset.idx = index;
+        chip.innerHTML = `<span class="chip-order">${index + 1}</span><span>${SHAPE_META[shape].name}</span><button class="chip-remove" type="button" aria-label="移除 ${SHAPE_META[shape].name}">&times;</button>`;
+
+        chip.addEventListener('dragstart', event => {
+            dragSrcIdx = index;
+            chip.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+        });
+
+        chip.addEventListener('dragend', () => {
+            dragSrcIdx = null;
+            chip.classList.remove('dragging');
+            clearDropIndicators();
+        });
+
+        chip.addEventListener('dragover', event => {
+            event.preventDefault();
+            clearDropIndicators();
+
+            const rect = chip.getBoundingClientRect();
+            const insertBefore = event.clientX < rect.left + rect.width / 2;
+            const indicator = document.createElement('div');
+            indicator.className = 'drop-indicator';
+            if (insertBefore) {
+                chip.parentNode.insertBefore(indicator, chip);
+            } else {
+                chip.parentNode.insertBefore(indicator, chip.nextSibling);
+            }
+        });
+
+        chip.addEventListener('drop', event => {
+            event.preventDefault();
+            if (dragSrcIdx === null) {
+                return;
+            }
+
+            const targetIdx = Number(chip.dataset.idx);
+            const rect = chip.getBoundingClientRect();
+            const insertBefore = event.clientX < rect.left + rect.width / 2;
+            const moved = state.selectedShapes.splice(dragSrcIdx, 1)[0];
+            let newIndex = insertBefore ? targetIdx : targetIdx + 1;
+            if (dragSrcIdx < newIndex) {
+                newIndex--;
+            }
+
+            state.selectedShapes.splice(newIndex, 0, moved);
+            state.activePreset = null;
+            renderQueue();
+            updatePresetActiveState();
+        });
+
+        chip.querySelector('.chip-remove').addEventListener('click', event => {
+            event.stopPropagation();
+            if (state.selectedShapes.length > 1) {
+                state.selectedShapes = state.selectedShapes.filter(item => item !== shape);
+                state.activePreset = null;
+                updateShapeButtons();
+                updatePresetActiveState();
+                renderQueue();
+                refreshDerivedState();
+            }
+        });
+
+        queue.appendChild(chip);
+    });
+}
+
+function clearDropIndicators() {
+    document.querySelectorAll('.drop-indicator').forEach(node => node.remove());
+}
+
+function applyPreset(presetId) {
+    const preset = PRESETS.find(item => item.id === presetId);
+    if (!preset) {
+        return;
+    }
+
+    state.activePreset = preset.id;
+    state.selectedShapes = [...preset.shapes];
+    state.baseColor = preset.color;
+    state.params = { ...preset.params };
+    state.layout = { ...DEFAULT_STYLE, ...(preset.layout || {}) };
+    cur.depth = state.params.depth;
+    cur.scale = state.params.scale;
+
+    syncUIFromState();
+    renderQueue();
+    refreshDerivedState(true);
+}
+
+function syncUIFromState() {
+    syncParameterControls();
+    document.getElementById('colorPicker').value = state.baseColor;
+    syncToggle(document.getElementById('t-center'), state.params.center);
+    syncToggle(document.getElementById('t-mirror'), state.params.mirror);
+    updateShapeButtons();
+    updatePaletteActiveState();
+    updatePresetActiveState();
+}
+
+function syncParameterControls() {
+    sliders.forEach(([sliderId, valueId, key, formatter]) => {
+        const slider = document.getElementById(sliderId);
+        slider.value = state.params[key];
+        document.getElementById(valueId).textContent = formatter(String(state.params[key]));
+    });
+}
+
+function syncToggle(element, isOn) {
+    element.classList.toggle('on', isOn);
+    element.setAttribute('aria-pressed', String(isOn));
+}
+
+function updateShapeButtons() {
+    document.querySelectorAll('.shape-btn').forEach(btn => {
+        btn.classList.toggle('active', state.selectedShapes.includes(btn.dataset.shape));
+    });
+}
+
+function updatePaletteActiveState() {
+    document.querySelectorAll('.palette-swatch').forEach(btn => {
+        const swatchColor = rgbToHex(btn.style.backgroundColor);
+        btn.classList.toggle('active', swatchColor.toLowerCase() === state.baseColor.toLowerCase());
+    });
+}
+
+function updatePresetActiveState() {
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === state.activePreset);
+    });
+}
+
+function buildStarfield() {
+    const total = 160;
+    scene.stars = [];
+
+    for (let i = 0; i < total; i++) {
+        scene.stars.push({
+            x: random(),
+            y: random(),
+            size: random(0.4, 1.7),
+            speed: random(0.25, 1.4),
+            phase: random(TWO_PI),
+            alphaBase: random(0.16, 0.52),
+            alphaSwing: random(0.04, 0.24),
+            hueOffset: random(-28, 30)
+        });
+    }
+}
+
+function getSceneViewport() {
+    const panelRect = document.getElementById('ui-panel').getBoundingClientRect();
+
+    if (windowWidth < 920) {
+        const topInset = panelRect.height;
+        return {
+            x: 0,
+            y: topInset,
+            w: width,
+            h: max(height - topInset, height * 0.48)
+        };
+    }
+
+    return {
+        x: panelRect.width,
+        y: 0,
+        w: width - panelRect.width,
+        h: height
+    };
+}
+
+function hsbToRgba(h, s, b, a) {
+    const c = color((h + 360) % 360, s, b, a);
+    const [r, g, blue, alphaValue] = c.levels;
+    return `rgba(${r}, ${g}, ${blue}, ${alphaValue / 255})`;
+}
+
+function formatNumber(value) {
+    return new Intl.NumberFormat('zh-CN').format(value);
+}
+
+function rgbToHex(rgbString) {
+    if (!rgbString || rgbString.startsWith('#')) {
+        return rgbString || '';
+    }
+
+    const matches = rgbString.match(/\d+/g);
+    if (!matches) {
+        return '';
+    }
+
+    return `#${matches.slice(0, 3).map(num => Number(num).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+    buildStarfield();
+}
+</script>
+</body>
+</html>
