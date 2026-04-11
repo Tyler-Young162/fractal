@@ -555,6 +555,81 @@
             color: var(--text-muted);
         }
 
+        /* ── FPS 计数器 ── */
+        #fps-counter {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 10;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.08);
+            font-size: 12px;
+            font-family: "SF Mono", monospace;
+            color: #6effa7;
+            pointer-events: none;
+        }
+        #fps-counter.warn { color: #ffba52; }
+        #fps-counter.bad { color: #ff6b8e; }
+
+        /* ── 设置按钮 & 面板 ── */
+        #settings-btn {
+            position: fixed;
+            top: 12px;
+            right: 120px;
+            z-index: 10;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.55);
+            color: #94a3b8;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        #settings-btn:hover { color: var(--accent); border-color: rgba(120,242,255,0.3); }
+        #settings-btn.active { color: var(--accent); background: rgba(120,242,255,0.12); border-color: rgba(120,242,255,0.3); }
+
+        #settings-panel {
+            position: fixed;
+            top: 56px;
+            right: 12px;
+            z-index: 10;
+            width: 240px;
+            padding: 16px;
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            display: none;
+        }
+        #settings-panel.open { display: block; }
+        #settings-panel h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-faint);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .fx-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+        }
+        .fx-toggle-label { font-size: 13px; color: #cbd5e1; }
+        .fx-toggle .toggle-switch { width: 40px; height: 22px; }
+        .fx-toggle .toggle-switch::after { width: 16px; height: 16px; top: 2px; left: 2px; }
+        .fx-toggle .toggle-switch.on::after { transform: translateX(18px); }
+
         @media (max-width: 920px) {
             html,
             body {
@@ -762,6 +837,37 @@
     </div>
 </aside>
 
+<!-- 设置按钮 & 面板 -->
+<button id="settings-btn" type="button" title="渲染设置">⚙</button>
+<div id="settings-panel">
+    <h3>渲染效果开关</h3>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">辉光后处理</span>
+        <button class="toggle-switch" id="fx-glow" type="button"></button>
+    </div>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">背景星云</span>
+        <button class="toggle-switch" id="fx-nebula" type="button"></button>
+    </div>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">背景星尘</span>
+        <button class="toggle-switch" id="fx-stars" type="button"></button>
+    </div>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">渐变填充</span>
+        <button class="toggle-switch" id="fx-gradient" type="button"></button>
+    </div>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">描边装饰</span>
+        <button class="toggle-switch" id="fx-stroke" type="button"></button>
+    </div>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">场景边框</span>
+        <button class="toggle-switch" id="fx-frame" type="button"></button>
+    </div>
+</div>
+<div id="fps-counter">-- FPS</div>
+
 <script>
 // ══════════════════════════════════════════════════════════════
 // 性能架构说明
@@ -850,6 +956,19 @@ const scene = {
     spriteCache: new Map()
 };
 
+// ── 效果开关（默认全部关闭，用户可通过设置按钮打开对比）──
+const fx = {
+    glow: false,      // 辉光后处理（blur叠加）
+    nebula: false,     // 背景星云光球
+    stars: false,      // 背景星尘粒子
+    gradient: false,   // 分形节点渐变填充（关闭时用纯色）
+    stroke: false,     // 分形节点描边
+    frame: false       // 场景边框虚线
+};
+
+// ── FPS 追踪 ──
+const fpsTracker = { frames: 0, lastTime: 0, display: 0 };
+
 const sliders = [
     ['s-depth','v-depth','depth', v => `${v} 级`],
     ['s-scale','v-scale','scale', v => Number(v).toFixed(2)],
@@ -912,6 +1031,8 @@ function setup() {
     renderPalette();
     syncUIFromState();
     refreshDerivedState(true);
+    bindSettings();
+    fpsTracker.lastTime = performance.now();
 }
 
 function rebuildBuffers() {
@@ -940,6 +1061,18 @@ function draw() {
     const budget = scene.budget;
     if (!budget) return;
 
+    // ── FPS 计算 ──
+    fpsTracker.frames++;
+    const now = performance.now();
+    if (now - fpsTracker.lastTime >= 500) {
+        fpsTracker.display = Math.round(fpsTracker.frames / ((now - fpsTracker.lastTime) / 1000));
+        fpsTracker.frames = 0;
+        fpsTracker.lastTime = now;
+        const el = document.getElementById('fps-counter');
+        el.textContent = `${fpsTracker.display} FPS`;
+        el.className = fpsTracker.display >= 50 ? '' : fpsTracker.display >= 30 ? 'warn' : 'bad';
+    }
+
     // ── 1. 按需重绘背景缓冲 ──
     if (scene.bgDirty) {
         renderBgToBuffer(baseHue, budget);
@@ -948,11 +1081,11 @@ function draw() {
 
     // ── 2. 按需重绘分形缓冲（含节流）──
     if (scene.fractalDirty) {
-        const now = performance.now();
-        if (now - scene.lastRenderTime > scene.renderThrottleMs) {
+        const tn = performance.now();
+        if (tn - scene.lastRenderTime > scene.renderThrottleMs) {
             renderFractalToBuffer(baseHue, budget, clockTime);
             scene.fractalDirty = false;
-            scene.lastRenderTime = now;
+            scene.lastRenderTime = tn;
         }
     }
 
@@ -975,7 +1108,6 @@ function draw() {
     if (!isTreeMode) {
         ctx.rotate(clockTime * 0.45 * state.params.spin * 6.5);
     }
-    // 呼吸脉动：整体微缩放
     if (state.params.pulse > 0) {
         const ps = 1 + Math.sin(clockTime * 2.1) * state.params.pulse * 0.5;
         ctx.scale(ps, ps);
@@ -984,7 +1116,7 @@ function draw() {
     ctx.restore();
 
     // 场景边框
-    drawSceneFrame(ctx, sceneBox, baseHue);
+    if (fx.frame) drawSceneFrame(ctx, sceneBox, baseHue);
 }
 
 // ══════════════════════════════════════════════════
@@ -1000,33 +1132,37 @@ function renderBgToBuffer(baseHue) {
     ctx.fillStyle = hsbToRgbaFast((baseHue+240)%360, 40, 5, 1);
     ctx.fillRect(0, 0, w, h);
 
-    // 星云光球
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 4; i++) {
-        const nx = 0.16 + i*0.18, ny = 0.18 + (i%2)*0.36;
-        const x = w * nx, y = h * ny;
-        const radius = Math.min(w, h) * (0.22 + i*0.05);
-        const hA = (baseHue + i*28) % 360, hB = (hA+46) % 360;
-        const grad = ctx.createRadialGradient(x, y, radius*0.06, x, y, radius);
-        grad.addColorStop(0, hsbToRgbaFast(hA, 78, 96, 0.14));
-        grad.addColorStop(0.5, hsbToRgbaFast(hB, 72, 58, 0.09));
-        grad.addColorStop(1, hsbToRgbaFast(hB, 60, 8, 0));
-        ctx.fillStyle = grad;
-        ctx.fillRect(x-radius, y-radius, radius*2, radius*2);
+    // 星云光球（受 fx.nebula 控制）
+    if (fx.nebula) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 4; i++) {
+            const nx = 0.16 + i*0.18, ny = 0.18 + (i%2)*0.36;
+            const x = w * nx, y = h * ny;
+            const radius = Math.min(w, h) * (0.22 + i*0.05);
+            const hA = (baseHue + i*28) % 360, hB = (hA+46) % 360;
+            const grad = ctx.createRadialGradient(x, y, radius*0.06, x, y, radius);
+            grad.addColorStop(0, hsbToRgbaFast(hA, 78, 96, 0.14));
+            grad.addColorStop(0.5, hsbToRgbaFast(hB, 72, 58, 0.09));
+            grad.addColorStop(1, hsbToRgbaFast(hB, 60, 8, 0));
+            ctx.fillStyle = grad;
+            ctx.fillRect(x-radius, y-radius, radius*2, radius*2);
+        }
+        ctx.restore();
     }
-    ctx.restore();
 
-    // 星尘
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    for (const star of scene.stars) {
-        ctx.beginPath();
-        ctx.fillStyle = hsbToRgbaFast((baseHue + star.hueOffset + 360)%360, 24, 98, star.alphaBase);
-        ctx.arc(star.x * w, star.y * h, Math.max(0.3, star.size), 0, Math.PI*2);
-        ctx.fill();
+    // 星尘（受 fx.stars 控制）
+    if (fx.stars) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        for (const star of scene.stars) {
+            ctx.beginPath();
+            ctx.fillStyle = hsbToRgbaFast((baseHue + star.hueOffset + 360)%360, 24, 98, star.alphaBase);
+            ctx.arc(star.x * w, star.y * h, Math.max(0.3, star.size), 0, Math.PI*2);
+            ctx.fill();
+        }
+        ctx.restore();
     }
-    ctx.restore();
 
     // 暗角
     ctx.save();
@@ -1071,8 +1207,8 @@ function renderFractalToBuffer(baseHue, budget, clockTime) {
 
     ctx.restore();
 
-    // ── 为整个分形添加一次性辉光层（远比每帧做 shadowBlur 快）──
-    if (budget.qualityMode !== 'protected') {
+    // ── 辉光后处理（受 fx.glow 控制）──
+    if (fx.glow && budget.qualityMode !== 'protected') {
         applyBufferGlow(fb, baseHue);
     }
 }
@@ -1123,13 +1259,15 @@ function renderFractalRadial(ctx, x, y, radius, depthRemaining, scaleFactor, bas
     const brightness = Math.min(98, 48 + layer * 6.5);
     const alphaFalloff = mapRange(layer, 0, 7, 1, 0.42);
 
-    // 绘制核心图形（无 shadowBlur，辉光由后处理统一添加）
-    ctx.fillStyle = createGradientFast(ctx, r, hueValue, brightness, 0.9 * alphaFalloff);
+    // 绘制核心图形
+    ctx.fillStyle = fx.gradient
+        ? createGradientFast(ctx, r, hueValue, brightness, 0.9 * alphaFalloff)
+        : hsbToRgbaFast(hueValue, 74, Math.min(100, brightness+12), 0.9 * alphaFalloff);
     traceShapePath(ctx, shape, r);
     ctx.fill();
 
-    // 描边
-    if (r > 8) {
+    // 描边（受 fx.stroke 控制）
+    if (fx.stroke && r > 8) {
         ctx.strokeStyle = hsbToRgbaFast((hueValue+22)%360, 50, Math.min(100, brightness+24), 0.18 * alphaFalloff);
         ctx.lineWidth = Math.max(0.3, mapRange(r, 8, 240, 0.3, 2));
         ctx.stroke();
@@ -1202,10 +1340,12 @@ function renderFractalTree(ctx, x, y, trunkLen, depthRemaining, scaleFactor, bas
         const leafBri = Math.min(98, 55 + layer * 5);
         const leafAlpha = Math.min(1, depthRemaining) * 0.85;
 
-        ctx.fillStyle = createGradientFast(ctx, leafSize, leafHue, leafBri, leafAlpha);
+        ctx.fillStyle = fx.gradient
+            ? createGradientFast(ctx, leafSize, leafHue, leafBri, leafAlpha)
+            : hsbToRgbaFast(leafHue, 74, Math.min(100, leafBri+12), leafAlpha);
         traceShapePath(ctx, leafShape, leafSize);
         ctx.fill();
-        if (leafSize > 3) {
+        if (fx.stroke && leafSize > 3) {
             ctx.strokeStyle = hsbToRgbaFast((leafHue+20)%360, 50, Math.min(100, leafBri+20), leafAlpha*0.3);
             ctx.lineWidth = Math.max(0.3, leafSize*0.04);
             ctx.stroke();
@@ -1529,6 +1669,49 @@ function windowResized() {
     rebuildBuffers();
     buildStarfield();
     refreshDerivedState(true);
+}
+
+// ══════════════════════════════════════════════════
+// 设置面板绑定
+// ══════════════════════════════════════════════════
+function bindSettings() {
+    const btn = document.getElementById('settings-btn');
+    const panel = document.getElementById('settings-panel');
+
+    btn.addEventListener('click', () => {
+        panel.classList.toggle('open');
+        btn.classList.toggle('active');
+    });
+
+    // 点击面板外部关闭
+    document.addEventListener('click', (e) => {
+        if (!panel.contains(e.target) && e.target !== btn) {
+            panel.classList.remove('open');
+            btn.classList.remove('active');
+        }
+    });
+
+    // 绑定每个效果开关
+    const fxToggles = [
+        ['fx-glow', 'glow'],
+        ['fx-nebula', 'nebula'],
+        ['fx-stars', 'stars'],
+        ['fx-gradient', 'gradient'],
+        ['fx-stroke', 'stroke'],
+        ['fx-frame', 'frame']
+    ];
+
+    fxToggles.forEach(([elId, fxKey]) => {
+        const toggle = document.getElementById(elId);
+        // 初始化视觉状态（默认全部 OFF）
+        syncToggle(toggle, fx[fxKey]);
+
+        toggle.addEventListener('click', () => {
+            fx[fxKey] = !fx[fxKey];
+            syncToggle(toggle, fx[fxKey]);
+            markDirty();
+        });
+    });
 }
 </script>
 </body>
