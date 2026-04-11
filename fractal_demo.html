@@ -758,20 +758,23 @@
     </div>
 
     <div class="footer-tips">
-        <b>操作提示：</b>先点一个预设建立气质，再去改图形队列和参数。拖拽队列能直接改变每层使用的形状顺序，通常比单独拉一个参数更快得到“好看”的结果。
+        <b>操作提示：</b>先点一个预设建立气质，再去改图形队列和参数。拖拽队列能直接改变每层使用的形状顺序，通常比单独拉一个参数更快得到"好看"的结果。
     </div>
 </aside>
 
 <script>
+// ══════════════════════════════════════════════════
+// 常量 & 元数据
+// ══════════════════════════════════════════════════
 const SHAPE_META = {
     triangle: { name: '三角形', branches: 3 },
-    circle: { name: '圆形', branches: 4 },
-    square: { name: '正方形', branches: 4 },
+    circle:   { name: '圆形',   branches: 4 },
+    square:   { name: '正方形', branches: 4 },
     pentagon: { name: '五边形', branches: 5 },
-    hexagon: { name: '六边形', branches: 6 },
-    star5: { name: '五角星', branches: 5 },
-    cross4: { name: '四芒星', branches: 4 },
-    flower: { name: '樱花瓣', branches: 5 }
+    hexagon:  { name: '六边形', branches: 6 },
+    star5:    { name: '五角星', branches: 5 },
+    cross4:   { name: '四芒星', branches: 4 },
+    flower:   { name: '樱花瓣', branches: 5 }
 };
 
 const PALETTES = [
@@ -836,11 +839,24 @@ const PRESETS = [
     {
         id: 'tree',
         name: '分形树',
-        desc: '向上生长 · 更像枝干与冠层',
+        desc: '向上生长 · 枝干分裂与叶冠层',
         color: '#8eea7d',
-        shapes: ['triangle', 'flower', 'circle'],
-        params: { depth: 6, scale: 0.62, branches: 3, layerRot: 3, spiral: -0.22, spread: 1.08, center: false, mirror: false, spin: 0.05, pulse: 0.03, hueShift: 8 },
-        layout: { mode: 'tree', maxBranches: 3, arcDeg: 68, directionDeg: -90, offsetXScale: 0.78, offsetYScale: 1.18, lift: 0.58, swayDeg: 8, radiusScaleDesktop: 0.12, radiusScaleMobile: 0.1, centerYBias: 0.88, branchJitterDeg: 3 }
+        shapes: ['circle', 'flower'],
+        params: { depth: 6, scale: 0.62, branches: 2, layerRot: 0, spiral: 0, spread: 1.0, center: false, mirror: false, spin: 0, pulse: 0.02, hueShift: 8 },
+        layout: {
+            mode: 'tree',
+            maxBranches: 3,
+            arcDeg: 70,
+            directionDeg: -90,
+            offsetXScale: 1,
+            offsetYScale: 1,
+            lift: 0.4,
+            swayDeg: 6,
+            radiusScaleDesktop: 0.12,
+            radiusScaleMobile: 0.1,
+            centerYBias: 0.92,
+            branchJitterDeg: 3
+        }
     },
     {
         id: 'snowflake',
@@ -853,53 +869,90 @@ const PRESETS = [
     }
 ];
 
+// ══════════════════════════════════════════════════
+// 全局状态
+// ══════════════════════════════════════════════════
 const state = {
     selectedShapes: ['triangle', 'flower', 'circle'],
     baseColor: '#7df1ff',
     activePreset: 'nebula',
     params: {
-        depth: 5,
-        scale: 0.49,
-        branches: 0,
-        layerRot: 12,
-        spiral: 0.16,
-        spread: 1.12,
-        center: false,
-        mirror: false,
-        spin: 0.22,
-        pulse: 0.05,
-        hueShift: 14
+        depth: 5, scale: 0.49, branches: 0, layerRot: 12,
+        spiral: 0.16, spread: 1.12, center: false, mirror: false,
+        spin: 0.22, pulse: 0.05, hueShift: 14
     },
-    layout: { ...DEFAULT_STYLE, ...(PRESETS.find(preset => preset.id === 'nebula')?.layout || {}) }
+    layout: { ...DEFAULT_STYLE }
 };
 
-const cur = {
-    depth: state.params.depth,
-    scale: state.params.scale
-};
+const cur = { depth: state.params.depth, scale: state.params.scale };
 
 const scene = {
     stars: [],
     budget: null,
     baseHue: 0,
     limits: { depthMax: 6, branchMax: 10 },
-    spriteCache: new Map()
+    spriteCache: new Map(),
+    // ── 性能优化：预计算的颜色缓存 ──
+    colorCache: new Map(),
+    colorCacheFrame: -1
 };
 
 const sliders = [
-    ['s-depth', 'v-depth', 'depth', value => `${value} 级`],
-    ['s-scale', 'v-scale', 'scale', value => Number(value).toFixed(2)],
-    ['s-branches', 'v-branches', 'branches', value => Number(value) === 0 ? '自动' : value],
-    ['s-layerRot', 'v-layerRot', 'layerRot', value => `${value}°`],
-    ['s-spiral', 'v-spiral', 'spiral', value => Number(value).toFixed(2)],
-    ['s-spread', 'v-spread', 'spread', value => Number(value).toFixed(2)],
-    ['s-spin', 'v-spin', 'spin', value => Number(value).toFixed(2)],
-    ['s-pulse', 'v-pulse', 'pulse', value => Number(value).toFixed(2)],
-    ['s-hueShift', 'v-hueShift', 'hueShift', value => value]
+    ['s-depth', 'v-depth', 'depth', v => `${v} 级`],
+    ['s-scale', 'v-scale', 'scale', v => Number(v).toFixed(2)],
+    ['s-branches', 'v-branches', 'branches', v => Number(v) === 0 ? '自动' : v],
+    ['s-layerRot', 'v-layerRot', 'layerRot', v => `${v}°`],
+    ['s-spiral', 'v-spiral', 'spiral', v => Number(v).toFixed(2)],
+    ['s-spread', 'v-spread', 'spread', v => Number(v).toFixed(2)],
+    ['s-spin', 'v-spin', 'spin', v => Number(v).toFixed(2)],
+    ['s-pulse', 'v-pulse', 'pulse', v => Number(v).toFixed(2)],
+    ['s-hueShift', 'v-hueShift', 'hueShift', v => v]
 ];
 
 let dragSrcIdx = null;
 
+// ══════════════════════════════════════════════════
+// 性能优化：HSB→RGBA 快速转换 (纯数学，不创建 p5.Color)
+// ══════════════════════════════════════════════════
+function hsbToRgbaFast(h, s, b, a) {
+    h = ((h % 360) + 360) % 360;
+    s = s / 100;
+    b = b / 100;
+    const c = b * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = b - c;
+    let r, g, bl;
+    if      (h < 60)  { r = c; g = x; bl = 0; }
+    else if (h < 120) { r = x; g = c; bl = 0; }
+    else if (h < 180) { r = 0; g = c; bl = x; }
+    else if (h < 240) { r = 0; g = x; bl = c; }
+    else if (h < 300) { r = x; g = 0; bl = c; }
+    else              { r = c; g = 0; bl = x; }
+    const ri = Math.round((r + m) * 255);
+    const gi = Math.round((g + m) * 255);
+    const bi = Math.round((bl + m) * 255);
+    return `rgba(${ri},${gi},${bi},${a})`;
+}
+
+// 预计算：将 hex 转为 HSB 的 hue 值（仅在颜色变化时调用一次）
+function hexToHue(hex) {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const d = max - min;
+    if (d === 0) return 0;
+    let h;
+    if (max === r) h = 60 * (((g - b) / d) % 6);
+    else if (max === g) h = 60 * ((b - r) / d + 2);
+    else h = 60 * ((r - g) / d + 4);
+    return ((h % 360) + 360) % 360;
+}
+
+// ══════════════════════════════════════════════════
+// p5.js 入口
+// ══════════════════════════════════════════════════
 function setup() {
     const canvas = createCanvas(windowWidth, windowHeight);
     canvas.position(0, 0);
@@ -907,7 +960,7 @@ function setup() {
     canvas.style('z-index', '0');
     colorMode(HSB, 360, 100, 100, 1);
     angleMode(RADIANS);
-    pixelDensity(min(window.devicePixelRatio || 1, 1.5));
+    pixelDensity(Math.min(window.devicePixelRatio || 1, 1.5));
     buildStarfield();
     renderPresets();
     bindUI();
@@ -931,17 +984,30 @@ function draw() {
     const sceneBox = getSceneViewport();
     const centerX = sceneBox.x + sceneBox.w * 0.5;
     const centerY = sceneBox.y + sceneBox.h * layoutCfg.centerYBias;
-    const initialRadius = max(42, min(sceneBox.w, sceneBox.h) * (windowWidth < 920 ? layoutCfg.radiusScaleMobile : layoutCfg.radiusScaleDesktop));
+    const initialRadius = Math.max(42, Math.min(sceneBox.w, sceneBox.h) * (windowWidth < 920 ? layoutCfg.radiusScaleMobile : layoutCfg.radiusScaleDesktop));
+
+    const isTreeMode = layoutCfg.mode === 'tree';
 
     push();
     translate(centerX, centerY);
-    rotate(clockTime * 0.45 * state.params.spin * 6.5);
-    drawFractal(0, 0, initialRadius, cur.depth, cur.scale, baseHue, 0, budget.qualityMode, clockTime);
+    // 分形树模式：禁止全局旋转
+    if (!isTreeMode) {
+        rotate(clockTime * 0.45 * state.params.spin * 6.5);
+    }
+
+    if (isTreeMode) {
+        drawFractalTree(0, 0, initialRadius * 2.5, cur.depth, cur.scale, baseHue, 0, budget.qualityMode, clockTime);
+    } else {
+        drawFractal(0, 0, initialRadius, cur.depth, cur.scale, baseHue, 0, budget.qualityMode, clockTime);
+    }
     pop();
 
     drawSceneFrame(sceneBox, baseHue, budget.qualityMode);
 }
 
+// ══════════════════════════════════════════════════
+// 背景渲染（星尘 / 星云 / 暗角）
+// ══════════════════════════════════════════════════
 function drawBackdrop(baseHue, budget, clockTime) {
     background((baseHue + 240) % 360, 40, 5, 1);
 
@@ -951,17 +1017,17 @@ function drawBackdrop(baseHue, budget, clockTime) {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < orbCount; i++) {
-        const nx = 0.16 + i * 0.18 + sin(clockTime * 0.09 + i * 1.4) * 0.05;
-        const ny = 0.18 + (i % 2) * 0.36 + cos(clockTime * 0.11 + i * 1.7) * 0.06;
+        const nx = 0.16 + i * 0.18 + Math.sin(clockTime * 0.09 + i * 1.4) * 0.05;
+        const ny = 0.18 + (i % 2) * 0.36 + Math.cos(clockTime * 0.11 + i * 1.7) * 0.06;
         const x = width * nx;
         const y = height * ny;
-        const radius = min(width, height) * (0.22 + i * 0.05);
+        const radius = Math.min(width, height) * (0.22 + i * 0.05);
         const hueA = (baseHue + i * 28 + clockTime * 6) % 360;
         const hueB = (hueA + 46) % 360;
         const gradient = ctx.createRadialGradient(x, y, radius * 0.06, x, y, radius);
-        gradient.addColorStop(0, hsbToRgba(hueA, 78, 96, 0.14));
-        gradient.addColorStop(0.5, hsbToRgba(hueB, 72, 58, 0.09));
-        gradient.addColorStop(1, hsbToRgba(hueB, 60, 8, 0));
+        gradient.addColorStop(0, hsbToRgbaFast(hueA, 78, 96, 0.14));
+        gradient.addColorStop(0.5, hsbToRgbaFast(hueB, 72, 58, 0.09));
+        gradient.addColorStop(1, hsbToRgbaFast(hueB, 60, 8, 0));
         ctx.fillStyle = gradient;
         ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     }
@@ -970,7 +1036,7 @@ function drawBackdrop(baseHue, budget, clockTime) {
     drawStarfield(baseHue, budget.qualityMode, clockTime);
 
     ctx.save();
-    const vignette = ctx.createRadialGradient(width * 0.52, height * 0.56, min(width, height) * 0.14, width * 0.52, height * 0.56, max(width, height) * 0.82);
+    const vignette = ctx.createRadialGradient(width * 0.52, height * 0.56, Math.min(width, height) * 0.14, width * 0.52, height * 0.56, Math.max(width, height) * 0.82);
     vignette.addColorStop(0, 'rgba(0,0,0,0)');
     vignette.addColorStop(1, 'rgba(2,4,10,0.72)');
     ctx.fillStyle = vignette;
@@ -987,16 +1053,15 @@ function drawStarfield(baseHue, qualityMode, clockTime) {
 
     for (let i = 0; i < count; i++) {
         const star = scene.stars[i];
-        const alpha = star.alphaBase + sin(clockTime * star.speed + star.phase) * star.alphaSwing;
-        const size = star.size + sin(clockTime * star.speed * 1.6 + star.phase) * 0.22;
-        const hueValue = (baseHue + star.hueOffset + sin(clockTime * 0.2 + star.phase) * 10 + 360) % 360;
+        const alpha = star.alphaBase + Math.sin(clockTime * star.speed + star.phase) * star.alphaSwing;
+        const size = star.size + Math.sin(clockTime * star.speed * 1.6 + star.phase) * 0.22;
+        const hVal = (baseHue + star.hueOffset + Math.sin(clockTime * 0.2 + star.phase) * 10 + 360) % 360;
 
         ctx.beginPath();
-        ctx.fillStyle = hsbToRgba(hueValue, 24, 98, constrain(alpha, 0.08, 0.95));
-        ctx.arc(star.x * width, star.y * height, max(0.3, size), 0, Math.PI * 2);
+        ctx.fillStyle = hsbToRgbaFast(hVal, 24, 98, Math.max(0.08, Math.min(0.95, alpha)));
+        ctx.arc(star.x * width, star.y * height, Math.max(0.3, size), 0, Math.PI * 2);
         ctx.fill();
     }
-
     ctx.restore();
 }
 
@@ -1006,9 +1071,9 @@ function drawSceneFrame(sceneBox, baseHue, qualityMode) {
 
     ctx.save();
     const gradient = ctx.createLinearGradient(sceneBox.x, sceneBox.y, sceneBox.x + sceneBox.w, sceneBox.y + sceneBox.h);
-    gradient.addColorStop(0, hsbToRgba((baseHue + 10) % 360, 70, 88, frameAlpha));
+    gradient.addColorStop(0, hsbToRgbaFast((baseHue + 10) % 360, 70, 88, frameAlpha));
     gradient.addColorStop(0.5, 'rgba(255,255,255,0)');
-    gradient.addColorStop(1, hsbToRgba((baseHue + 50) % 360, 60, 76, frameAlpha));
+    gradient.addColorStop(1, hsbToRgbaFast((baseHue + 50) % 360, 60, 76, frameAlpha));
     ctx.strokeStyle = gradient;
     ctx.lineWidth = 1;
     ctx.setLineDash([10, 16]);
@@ -1016,12 +1081,13 @@ function drawSceneFrame(sceneBox, baseHue, qualityMode) {
     ctx.restore();
 }
 
+// ══════════════════════════════════════════════════
+// 核心算法 A：通用径向分形（非树模式）
+// ══════════════════════════════════════════════════
 function drawFractal(x, y, radius, depthRemaining, scaleFactor, baseHue, layer, qualityMode, clockTime) {
     const minDepth = qualityMode === 'protected' ? 0.28 : qualityMode === 'balanced' ? 0.18 : 0.08;
     const minRadius = qualityMode === 'protected' ? 2.4 : qualityMode === 'balanced' ? 1.5 : 0.9;
-    if (depthRemaining < minDepth || radius < minRadius) {
-        return;
-    }
+    if (depthRemaining < minDepth || radius < minRadius) return;
 
     const shape = state.selectedShapes[layer % state.selectedShapes.length];
     const renderMode = resolveNodeRenderMode(radius, layer, depthRemaining, qualityMode);
@@ -1029,9 +1095,7 @@ function drawFractal(x, y, radius, depthRemaining, scaleFactor, baseHue, layer, 
     push();
     translate(x, y);
 
-    if (state.params.mirror && layer % 2 === 1) {
-        scale(-1, 1);
-    }
+    if (state.params.mirror && layer % 2 === 1) scale(-1, 1);
 
     if (layer > 0) {
         rotate(radians(state.params.layerRot) * layer);
@@ -1042,18 +1106,16 @@ function drawFractal(x, y, radius, depthRemaining, scaleFactor, baseHue, layer, 
 
     let pulseFactor = 1;
     if (state.params.pulse > 0) {
-        pulseFactor = 1 + sin(clockTime * 2.1 + layer * 1.28) * state.params.pulse;
+        pulseFactor = 1 + Math.sin(clockTime * 2.1 + layer * 1.28) * state.params.pulse;
     }
 
     const r = radius * pulseFactor;
-    const fractionalFade = constrain(depthRemaining, 0, 1);
+    const fractionalFade = Math.min(1, Math.max(0, depthRemaining));
 
-    if (depthRemaining < 1) {
-        scale(fractionalFade);
-    }
+    if (depthRemaining < 1) scale(fractionalFade);
 
-    const hueValue = (baseHue + layer * state.params.hueShift + sin(clockTime + layer * 0.6) * 7 + 360) % 360;
-    const brightness = min(98, 48 + layer * 6.5);
+    const hueValue = (baseHue + layer * state.params.hueShift + Math.sin(clockTime + layer * 0.6) * 7 + 360) % 360;
+    const brightness = Math.min(98, 48 + layer * 6.5);
 
     if (renderMode === 'vector') {
         drawShapeHalo(shape, r, hueValue, brightness, layer, qualityMode);
@@ -1071,47 +1133,179 @@ function drawFractal(x, y, radius, depthRemaining, scaleFactor, baseHue, layer, 
     if (depthRemaining > 0) {
         const branches = resolveBranchCount(shape);
         const childRadius = r * scaleFactor;
-        const baseOffset = max(r - childRadius * 0.82, r * 0.18) * state.params.spread;
+        const baseOffset = Math.max(r - childRadius * 0.82, r * 0.18) * state.params.spread;
         const spiralOffset = baseOffset * (1 + state.params.spiral * layer * 0.12);
         const nextDepth = depthRemaining - 1;
 
         const branchTargets = resolveBranchTargets(shape, layer, branches, spiralOffset, clockTime);
-        for (const target of branchTargets) {
-            drawFractal(
-                target.x,
-                target.y,
-                childRadius,
-                nextDepth,
-                scaleFactor,
-                baseHue,
-                layer + 1,
-                qualityMode,
-                clockTime
-            );
+        for (let i = 0; i < branchTargets.length; i++) {
+            drawFractal(branchTargets[i].x, branchTargets[i].y, childRadius, nextDepth, scaleFactor, baseHue, layer + 1, qualityMode, clockTime);
         }
 
         if (state.params.center && !(qualityMode === 'protected' && layer >= 2)) {
             drawFractal(0, 0, childRadius * 0.78, nextDepth, scaleFactor, baseHue, layer + 1, qualityMode, clockTime);
         }
     }
+    pop();
+}
+
+// ══════════════════════════════════════════════════
+// 核心算法 B：分形树专用引擎
+// ══════════════════════════════════════════════════
+// 分形树需要一个完全不同的渲染逻辑：
+// - 它有明确的"树干"（线段），而非radial放射
+// - 分支角度是相对于父枝干的方向偏转，不是圆周均分
+// - 树干粗细随层级递减，颜色从棕色过渡到绿色
+// - 末端（叶子层）使用用户选择的图形（花/圆/星等）绘制
+// - 整体不旋转，始终向上生长
+
+function drawFractalTree(x, y, trunkLen, depthRemaining, scaleFactor, baseHue, layer, qualityMode, clockTime) {
+    if (depthRemaining < 0.05 || trunkLen < 1.5) return;
+
+    const ctx = drawingContext;
+    const layoutCfg = state.layout;
+    const maxDepth = state.params.depth;
+    const progress = 1 - (depthRemaining / maxDepth); // 0 = trunk, 1 = tips
+
+    // ── 树干参数 ──
+    const baseThickness = Math.max(1, trunkLen * 0.12);
+    const thickness = baseThickness * (depthRemaining < 1 ? depthRemaining : 1);
+
+    // 颜色：从棕色(35°)渐变到绿色(baseHue)
+    const trunkHue = (35 + progress * ((baseHue + 360 - 35) % 360)) % 360;
+    const trunkSat = 40 + progress * 35;
+    const trunkBri = 28 + progress * 32;
+
+    // ── 微风摇曳 ──
+    const swayAmt = radians(layoutCfg.swayDeg || 6);
+    const sway = Math.sin(clockTime * 0.45 + layer * 0.7 + x * 0.003) * swayAmt * Math.min(1, layer * 0.25 + 0.15);
+
+    push();
+    translate(x, y);
+    rotate(sway);
+
+    // ── 绘制枝干线段 ──
+    const endY = -trunkLen;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, endY);
+    ctx.strokeStyle = hsbToRgbaFast(trunkHue, trunkSat, trunkBri, depthRemaining < 1 ? depthRemaining * 0.9 : 0.9);
+    ctx.lineWidth = thickness;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // 枝干的微妙辉光（仅cinematic模式 + 中等以上的枝干）
+    if (qualityMode === 'cinematic' && thickness > 2) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.shadowBlur = thickness * 2;
+        ctx.shadowColor = hsbToRgbaFast(trunkHue, 60, 80, 0.15);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, endY);
+        ctx.strokeStyle = hsbToRgbaFast(trunkHue, 50, 70, 0.1);
+        ctx.lineWidth = thickness * 0.6;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.restore();
+
+    // ── 在枝干末端生长（递归或绘制叶子/花） ──
+    translate(0, endY);
+
+    const isLeafLayer = depthRemaining <= 1.5;
+
+    if (isLeafLayer && depthRemaining > 0) {
+        // 叶子层：使用用户选中的图形来绘制
+        const leafShape = state.selectedShapes[layer % state.selectedShapes.length];
+        const leafSize = trunkLen * scaleFactor * 0.6;
+        const leafHue = (baseHue + layer * state.params.hueShift + 360) % 360;
+        const leafBri = Math.min(98, 55 + layer * 5);
+        const leafAlpha = Math.min(1, depthRemaining) * 0.85;
+
+        // 绘制叶子形状
+        ctx.save();
+        ctx.fillStyle = createShapeGradientFast(ctx, leafSize, leafHue, leafBri, leafAlpha);
+
+        if (qualityMode === 'cinematic' && leafSize > 4) {
+            ctx.shadowBlur = leafSize * 0.8;
+            ctx.shadowColor = hsbToRgbaFast(leafHue, 70, 90, 0.25);
+        }
+
+        traceShapePath(ctx, leafShape, leafSize, qualityMode);
+        ctx.fill();
+
+        // 叶端描边
+        if (leafSize > 3) {
+            ctx.strokeStyle = hsbToRgbaFast((leafHue + 20) % 360, 50, Math.min(100, leafBri + 20), leafAlpha * 0.3);
+            ctx.lineWidth = Math.max(0.3, leafSize * 0.04);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // 叶端小火花
+        if (qualityMode === 'cinematic' && leafSize > 5) {
+            drawLeafSpark(leafSize, leafHue, layer, clockTime);
+        }
+    }
+
+    if (depthRemaining > 0.3) {
+        // 分支
+        const actualBranches = Math.max(2, Math.min(state.params.branches > 0 ? state.params.branches : 2, layoutCfg.maxBranches || 3));
+        const childLen = trunkLen * scaleFactor;
+        const nextDepth = depthRemaining - 1;
+        const arcHalf = radians((layoutCfg.arcDeg || 70) / 2);
+
+        for (let i = 0; i < actualBranches; i++) {
+            let branchAngle;
+            if (actualBranches === 1) {
+                branchAngle = 0;
+            } else {
+                const t = i / (actualBranches - 1); // 0 to 1
+                branchAngle = -arcHalf + t * arcHalf * 2;
+            }
+
+            // 添加微弱的随机抖动
+            const jitter = Math.sin(clockTime * 0.8 + layer * 0.7 + i * 1.9) * radians(layoutCfg.branchJitterDeg || 3);
+            branchAngle += jitter;
+
+            // 螺旋因子适度影响枝干长度
+            const spiralLenMod = 1 + state.params.spiral * 0.15 * (i % 2 === 0 ? 1 : -1);
+
+            push();
+            rotate(branchAngle);
+            drawFractalTree(0, 0, childLen * spiralLenMod, nextDepth, scaleFactor, baseHue, layer + 1, qualityMode, clockTime);
+            pop();
+        }
+
+        // 中心子代：在分形树中表示一个"主干延续"
+        if (state.params.center) {
+            drawFractalTree(0, 0, childLen * 0.85, nextDepth, scaleFactor, baseHue, layer + 1, qualityMode, clockTime);
+        }
+    }
 
     pop();
 }
 
+// ══════════════════════════════════════════════════
+// 图形绘制模块（优化：避免每帧创建 p5.Color）
+// ══════════════════════════════════════════════════
 function drawShapeHalo(shape, radius, hueValue, brightness, layer, qualityMode) {
-    if (qualityMode === 'protected' && radius < 28) {
-        return;
-    }
+    if (qualityMode === 'protected' && radius < 28) return;
+    // 优化：balanced 模式下，小于 40px 的图形也跳过 halo
+    if (qualityMode === 'balanced' && radius < 40) return;
 
     const ctx = drawingContext;
-    const glowStrength = qualityMode === 'cinematic' ? min(90, radius * 0.92 + layer * 6) : min(52, radius * 0.52 + layer * 4);
-    const glowAlpha = map(layer, 0, 7, 0.26, 0.05, true);
+    const glowStrength = qualityMode === 'cinematic' ? Math.min(90, radius * 0.92 + layer * 6) : Math.min(52, radius * 0.52 + layer * 4);
+    const glowAlpha = mapRange(layer, 0, 7, 0.26, 0.05);
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.shadowBlur = glowStrength;
-    ctx.shadowColor = hsbToRgba(hueValue, 82, 100, glowAlpha + 0.08);
-    ctx.fillStyle = createShapeGradient(ctx, radius * 1.08, hueValue, min(100, brightness + 10), glowAlpha);
+    ctx.shadowColor = hsbToRgbaFast(hueValue, 82, 100, glowAlpha + 0.08);
+    ctx.fillStyle = createShapeGradientFast(ctx, radius * 1.08, hueValue, Math.min(100, brightness + 10), glowAlpha);
     traceShapePath(ctx, shape, radius * 1.06, qualityMode);
     ctx.fill();
     ctx.restore();
@@ -1119,20 +1313,19 @@ function drawShapeHalo(shape, radius, hueValue, brightness, layer, qualityMode) 
 
 function drawShapeCore(shape, radius, hueValue, brightness, layer, qualityMode, alphaScale) {
     const ctx = drawingContext;
-    const alphaFalloff = map(layer, 0, 7, 1, 0.42, true);
+    const alphaFalloff = mapRange(layer, 0, 7, 1, 0.42);
     const alpha = (qualityMode === 'protected' ? 0.9 : 0.96) * alphaScale * alphaFalloff;
 
     ctx.save();
-    ctx.fillStyle = createShapeGradient(ctx, radius, hueValue, brightness, alpha);
-    ctx.strokeStyle = hsbToRgba((hueValue + 22) % 360, 50, min(100, brightness + 24), qualityMode === 'protected' ? 0.08 : 0.22);
-    ctx.lineWidth = radius > 18 ? map(radius, 18, 240, 0.5, 2.1, true) : 0.3;
+    ctx.fillStyle = createShapeGradientFast(ctx, radius, hueValue, brightness, alpha);
+    ctx.strokeStyle = hsbToRgbaFast((hueValue + 22) % 360, 50, Math.min(100, brightness + 24), qualityMode === 'protected' ? 0.08 : 0.22);
+    ctx.lineWidth = radius > 18 ? mapRange(radius, 18, 240, 0.5, 2.1) : 0.3;
     traceShapePath(ctx, shape, radius, qualityMode);
     ctx.fill();
 
     if (qualityMode !== 'protected' || radius > 18) {
         ctx.stroke();
     }
-
     ctx.restore();
 }
 
@@ -1142,82 +1335,63 @@ function drawLeafSpark(radius, hueValue, layer, clockTime) {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.shadowBlur = 16;
-    ctx.shadowColor = hsbToRgba((hueValue + 16) % 360, 70, 100, 0.45);
+    ctx.shadowColor = hsbToRgbaFast((hueValue + 16) % 360, 70, 100, 0.45);
 
     for (let i = 0; i < 3; i++) {
-        const angle = clockTime * 0.9 + layer * 0.45 + i * (TWO_PI / 3);
+        const angle = clockTime * 0.9 + layer * 0.45 + i * (Math.PI * 2 / 3);
         const dist = radius * (0.16 + i * 0.05);
-        const size = max(1.1, radius * 0.045);
+        const size = Math.max(1.1, radius * 0.045);
 
         ctx.beginPath();
-        ctx.fillStyle = hsbToRgba((hueValue + 18 + i * 10) % 360, 42, 100, 0.42);
-        ctx.arc(cos(angle) * dist, sin(angle) * dist, size, 0, Math.PI * 2);
+        ctx.fillStyle = hsbToRgbaFast((hueValue + 18 + i * 10) % 360, 42, 100, 0.42);
+        ctx.arc(Math.cos(angle) * dist, Math.sin(angle) * dist, size, 0, Math.PI * 2);
         ctx.fill();
     }
-
     ctx.restore();
 }
 
 function resolveNodeRenderMode(radius, layer, depthRemaining, qualityMode) {
     if (qualityMode === 'protected') {
-        if (radius < 10 || layer >= 4 || depthRemaining < 0.85) {
-            return 'simple';
-        }
-        if (radius < 28 || layer >= 2) {
-            return 'sprite';
-        }
+        if (radius < 10 || layer >= 4 || depthRemaining < 0.85) return 'simple';
+        if (radius < 28 || layer >= 2) return 'sprite';
         return 'vector';
     }
-
     if (qualityMode === 'balanced') {
-        if (radius < 6 || layer >= 6 || depthRemaining < 0.55) {
-            return 'simple';
-        }
-        if (radius < 18 || layer >= 4) {
-            return 'sprite';
-        }
+        if (radius < 6 || layer >= 6 || depthRemaining < 0.55) return 'simple';
+        if (radius < 18 || layer >= 4) return 'sprite';
         return 'vector';
     }
-
-    if (radius < 4.5 || (layer >= 6 && depthRemaining < 0.7)) {
-        return 'simple';
-    }
-
-    if (radius < 14 || layer >= 5) {
-        return 'sprite';
-    }
-
+    if (radius < 4.5 || (layer >= 6 && depthRemaining < 0.7)) return 'simple';
+    if (radius < 14 || layer >= 5) return 'sprite';
     return 'vector';
 }
 
 function drawShapeSprite(shape, radius, hueValue, brightness, layer, qualityMode, alphaScale) {
     const tier = radius < 12 ? 'small' : radius < 24 ? 'medium' : 'large';
     const sprite = getShapeSprite(shape, qualityMode, tier);
-    const alpha = map(layer, 0, 7, 0.94, 0.42, true) * alphaScale;
+    const alpha = mapRange(layer, 0, 7, 0.94, 0.42) * alphaScale;
     const drawSize = radius * (tier === 'large' ? 2.85 : tier === 'medium' ? 2.6 : 2.35);
 
     push();
     imageMode(CENTER);
-    tint(hueValue, 72, min(100, brightness + 10), alpha);
+    tint(hueValue, 72, Math.min(100, brightness + 10), alpha);
     image(sprite, 0, 0, drawSize, drawSize);
     noTint();
     pop();
 }
 
 function drawSimpleNode(radius, hueValue, brightness, layer, alphaScale) {
-    const alpha = map(layer, 0, 7, 0.78, 0.28, true) * alphaScale;
-    const orbRadius = max(1.1, radius * 1.08);
+    const alpha = mapRange(layer, 0, 7, 0.78, 0.28) * alphaScale;
+    const orbRadius = Math.max(1.1, radius * 1.08);
 
     noStroke();
-    fill(hueValue, 52, min(100, brightness + 16), alpha);
+    fill(hueValue, 52, Math.min(100, brightness + 16), alpha);
     circle(0, 0, orbRadius * 2);
 }
 
 function getShapeSprite(shape, qualityMode, tier) {
     const key = `${shape}-${qualityMode}-${tier}`;
-    if (scene.spriteCache.has(key)) {
-        return scene.spriteCache.get(key);
-    }
+    if (scene.spriteCache.has(key)) return scene.spriteCache.get(key);
 
     const size = tier === 'large' ? 176 : tier === 'medium' ? 120 : 72;
     const radius = tier === 'large' ? 40 : tier === 'medium' ? 26 : 15;
@@ -1251,36 +1425,24 @@ function getShapeSprite(shape, qualityMode, tier) {
     return gfx;
 }
 
+// ══════════════════════════════════════════════════
+// 图形路径追踪
+// ══════════════════════════════════════════════════
 function traceShapePath(ctx, shape, radius, qualityMode) {
     switch (shape) {
-        case 'triangle':
-            tracePolygon(ctx, 3, radius, -HALF_PI);
-            break;
+        case 'triangle': tracePolygon(ctx, 3, radius, -HALF_PI); break;
         case 'square': {
             const side = radius * Math.SQRT2;
             ctx.beginPath();
             ctx.rect(-side / 2, -side / 2, side, side);
             break;
         }
-        case 'circle':
-            ctx.beginPath();
-            ctx.arc(0, 0, radius, 0, Math.PI * 2);
-            break;
-        case 'pentagon':
-            tracePolygon(ctx, 5, radius, -HALF_PI);
-            break;
-        case 'hexagon':
-            tracePolygon(ctx, 6, radius, -HALF_PI);
-            break;
-        case 'star5':
-            traceStar(ctx, radius * 0.4, radius, 5);
-            break;
-        case 'cross4':
-            traceStar(ctx, radius * 0.16, radius, 4);
-            break;
-        case 'flower':
-            traceFlower(ctx, radius, qualityMode);
-            break;
+        case 'circle':   ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); break;
+        case 'pentagon':  tracePolygon(ctx, 5, radius, -HALF_PI); break;
+        case 'hexagon':   tracePolygon(ctx, 6, radius, -HALF_PI); break;
+        case 'star5':     traceStar(ctx, radius * 0.4, radius, 5); break;
+        case 'cross4':    traceStar(ctx, radius * 0.16, radius, 4); break;
+        case 'flower':    traceFlower(ctx, radius, qualityMode); break;
     }
 }
 
@@ -1288,13 +1450,8 @@ function tracePolygon(ctx, sides, radius, startAngle) {
     ctx.beginPath();
     for (let i = 0; i < sides; i++) {
         const angle = startAngle + i * (Math.PI * 2 / sides);
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        if (i === 0) {
-            ctx.moveTo(x, y);
-        } else {
-            ctx.lineTo(x, y);
-        }
+        if (i === 0) ctx.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+        else ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
     }
     ctx.closePath();
 }
@@ -1303,15 +1460,10 @@ function traceStar(ctx, innerRadius, outerRadius, points) {
     const step = Math.PI / points;
     ctx.beginPath();
     for (let i = 0; i < points * 2; i++) {
-        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        const r = i % 2 === 0 ? outerRadius : innerRadius;
         const angle = -HALF_PI + i * step;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        if (i === 0) {
-            ctx.moveTo(x, y);
-        } else {
-            ctx.lineTo(x, y);
-        }
+        if (i === 0) ctx.moveTo(Math.cos(angle) * r, Math.sin(angle) * r);
+        else ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
     }
     ctx.closePath();
 }
@@ -1319,101 +1471,68 @@ function traceStar(ctx, innerRadius, outerRadius, points) {
 function traceFlower(ctx, radius, qualityMode) {
     const step = qualityMode === 'protected' ? 0.18 : radius < 30 ? 0.11 : 0.07;
     ctx.beginPath();
-
     for (let angle = -HALF_PI, index = 0; angle <= Math.PI * 1.5 + step; angle += step, index++) {
         const wave = Math.sin(5 * (angle + HALF_PI));
         const rr = radius * 0.74 + wave * (radius * 0.26);
-        const x = Math.cos(angle) * rr;
-        const y = Math.sin(angle) * rr;
-        if (index === 0) {
-            ctx.moveTo(x, y);
-        } else {
-            ctx.lineTo(x, y);
-        }
+        if (index === 0) ctx.moveTo(Math.cos(angle) * rr, Math.sin(angle) * rr);
+        else ctx.lineTo(Math.cos(angle) * rr, Math.sin(angle) * rr);
     }
-
     ctx.closePath();
 }
 
-function createShapeGradient(ctx, radius, hueValue, brightness, alpha) {
+// 优化版：不使用 p5 color() 的渐变创建
+function createShapeGradientFast(ctx, radius, hueValue, brightness, alpha) {
     const gradient = ctx.createRadialGradient(-radius * 0.28, -radius * 0.34, radius * 0.05, 0, 0, radius * 1.18);
-    gradient.addColorStop(0, hsbToRgba((hueValue - 12 + 360) % 360, 38, 100, alpha));
-    gradient.addColorStop(0.34, hsbToRgba(hueValue, 74, min(100, brightness + 12), alpha));
-    gradient.addColorStop(0.78, hsbToRgba((hueValue + 22) % 360, 88, max(18, brightness - 8), alpha * 0.94));
-    gradient.addColorStop(1, hsbToRgba((hueValue + 42) % 360, 82, 14, alpha * 0.74));
+    gradient.addColorStop(0, hsbToRgbaFast((hueValue - 12 + 360) % 360, 38, 100, alpha));
+    gradient.addColorStop(0.34, hsbToRgbaFast(hueValue, 74, Math.min(100, brightness + 12), alpha));
+    gradient.addColorStop(0.78, hsbToRgbaFast((hueValue + 22) % 360, 88, Math.max(18, brightness - 8), alpha * 0.94));
+    gradient.addColorStop(1, hsbToRgbaFast((hueValue + 42) % 360, 82, 14, alpha * 0.74));
     return gradient;
 }
 
+// ══════════════════════════════════════════════════
+// 分支计算
+// ══════════════════════════════════════════════════
 function resolveBranchCount(shape) {
     const naturalBranches = SHAPE_META[shape].branches;
     const layoutCfg = state.layout;
     let branches = state.params.branches > 0 ? state.params.branches : naturalBranches;
-
-    if (layoutCfg.branchFloor) {
-        branches = max(branches, layoutCfg.branchFloor);
-    }
-
-    if (layoutCfg.maxBranches) {
-        branches = min(branches, layoutCfg.maxBranches);
-    }
-
-    return max(1, Math.round(branches));
+    if (layoutCfg.branchFloor) branches = Math.max(branches, layoutCfg.branchFloor);
+    if (layoutCfg.maxBranches) branches = Math.min(branches, layoutCfg.maxBranches);
+    return Math.max(1, Math.round(branches));
 }
 
 function resolveBranchTargets(shape, layer, branches, spiralOffset, clockTime) {
     const layoutCfg = state.layout;
     const mode = layoutCfg.mode || 'radial';
 
-    if (mode === 'tree') {
-        const actualBranches = min(branches, layoutCfg.maxBranches || 3);
-        const arc = radians(layoutCfg.arcDeg || 76);
-        const sway = sin(clockTime * 0.45 + layer * 0.48) * radians(layoutCfg.swayDeg || 0) * min(1, layer * 0.22 + 0.2);
-        const direction = radians(layoutCfg.directionDeg || -90) + sway;
-        const targets = [];
-
-        for (let i = 0; i < actualBranches; i++) {
-            const spread = actualBranches === 1 ? 0 : map(i, 0, actualBranches - 1, -0.5, 0.5);
-            const jitter = sin(clockTime * 0.8 + layer * 0.7 + i * 1.9) * radians(layoutCfg.branchJitterDeg || 0);
-            const angle = direction + spread * arc + jitter;
-            const distance = spiralOffset * (1 + abs(spread) * 0.1);
-            targets.push({
-                x: cos(angle) * distance * layoutCfg.offsetXScale,
-                y: sin(angle) * distance * layoutCfg.offsetYScale - spiralOffset * layoutCfg.lift
-            });
-        }
-
-        return targets;
-    }
-
     const startAngle = getShapeStartAngle(shape, clockTime);
-    const actualBranches = layoutCfg.branchFloor ? max(branches, layoutCfg.branchFloor) : branches;
+    const actualBranches = layoutCfg.branchFloor ? Math.max(branches, layoutCfg.branchFloor) : branches;
     const rotationOffset = mode === 'snowflake' ? (layer % 2 === 1 ? radians(layoutCfg.alternateRotation || 0) : 0) : 0;
     const targets = [];
 
     for (let i = 0; i < actualBranches; i++) {
-        const jitter = sin(clockTime * 0.55 + layer * 0.35 + i * 0.9) * radians(layoutCfg.branchJitterDeg || 0);
-        const angle = startAngle + rotationOffset + i * (TWO_PI / actualBranches) + jitter;
+        const jitter = Math.sin(clockTime * 0.55 + layer * 0.35 + i * 0.9) * radians(layoutCfg.branchJitterDeg || 0);
+        const angle = startAngle + rotationOffset + i * (Math.PI * 2 / actualBranches) + jitter;
         const radialScale = mode === 'snowflake' && i % 2 === 1 ? 0.94 : 1;
         const distance = spiralOffset * radialScale;
         targets.push({
-            x: cos(angle) * distance * layoutCfg.offsetXScale,
-            y: sin(angle) * distance * layoutCfg.offsetYScale
+            x: Math.cos(angle) * distance * layoutCfg.offsetXScale,
+            y: Math.sin(angle) * distance * layoutCfg.offsetYScale
         });
     }
-
     return targets;
 }
 
 function getShapeStartAngle(shape, clockTime) {
-    if (shape === 'square' || shape === 'cross4') {
-        return Math.PI / 4;
-    }
-    if (shape === 'circle') {
-        return clockTime * 0.22;
-    }
+    if (shape === 'square' || shape === 'cross4') return Math.PI / 4;
+    if (shape === 'circle') return clockTime * 0.22;
     return -HALF_PI;
 }
 
+// ══════════════════════════════════════════════════
+// 渲染预算系统
+// ══════════════════════════════════════════════════
 function computeRenderBudget() {
     const averageBranches = state.selectedShapes.reduce((sum, shape) => sum + resolveBranchCount(shape), 0) / state.selectedShapes.length;
     const branchFactor = averageBranches + (state.params.center ? 1 : 0);
@@ -1442,28 +1561,16 @@ function computeRenderBudget() {
         effectiveDepth -= 0.5;
     }
 
-    return {
-        estimate,
-        branchFactor,
-        qualityMode,
-        modeLabel,
-        detail,
-        noteClass,
-        effectiveDepth: max(0, effectiveDepth),
-        isReduced: effectiveDepth < state.params.depth
-    };
+    return { estimate, branchFactor, qualityMode, modeLabel, detail, noteClass, effectiveDepth: Math.max(0, effectiveDepth), isReduced: effectiveDepth < state.params.depth };
 }
 
 function estimateNodes(depth, branchFactor) {
-    let total = 0;
-    let layerCount = 1;
+    let total = 0, layerCount = 1;
     const roundedDepth = Math.max(0, Math.ceil(depth));
-
     for (let i = 0; i <= roundedDepth; i++) {
         total += layerCount;
         layerCount *= branchFactor;
     }
-
     return Math.round(total);
 }
 
@@ -1477,81 +1584,51 @@ function updateBudgetUI(budget) {
 
     const note = document.getElementById('performance-note');
     note.classList.remove('warn', 'danger');
-    if (budget.noteClass) {
-        note.classList.add(budget.noteClass);
-    }
+    if (budget.noteClass) note.classList.add(budget.noteClass);
     note.textContent = budget.isReduced
-        ? `当前组合预计 ${formatNumber(budget.estimate)} 个节点，系统已自动削峰，避免高复杂度场景卡顿。当前建议上限：深度 ${scene.limits.depthMax}，分裂 ${scene.limits.branchMax}。`
-        : `${budget.detail} 当前建议上限：深度 ${scene.limits.depthMax}，分裂 ${scene.limits.branchMax}。`;
+        ? `当前组合预计 ${formatNumber(budget.estimate)} 个节点，系统已自动削峰。当前上限：深度 ${scene.limits.depthMax}，分裂 ${scene.limits.branchMax}。`
+        : `${budget.detail} 当前上限：深度 ${scene.limits.depthMax}，分裂 ${scene.limits.branchMax}。`;
 }
 
 function computeDynamicLimits() {
     const effectiveBranches = state.selectedShapes.reduce((sum, shape) => sum + resolveBranchCount(shape), 0) / state.selectedShapes.length;
-    let depthMax = 6;
-    let branchMax = 10;
+    let depthMax = 6, branchMax = 10;
 
-    if (state.layout.mode === 'tree') {
-        depthMax = 6;
-        branchMax = min(branchMax, state.layout.maxBranches || 3);
-    }
-
-    if (state.layout.mode === 'snowflake') {
-        depthMax = min(depthMax, 5);
-        branchMax = min(branchMax, state.layout.maxBranches || 6);
-    }
-
-    if (state.params.center) {
-        depthMax = Math.min(depthMax, 5);
-        branchMax = Math.min(branchMax, 8);
-    }
-
-    if (effectiveBranches >= 8) {
-        depthMax = Math.min(depthMax, 4);
-    } else if (effectiveBranches >= 6) {
-        depthMax = Math.min(depthMax, 5);
-    }
-
-    if (state.params.depth >= 6) {
-        branchMax = Math.min(branchMax, 5);
-    } else if (state.params.depth >= 5) {
-        branchMax = Math.min(branchMax, 7);
-    }
+    if (state.layout.mode === 'tree') { depthMax = 8; branchMax = Math.min(branchMax, state.layout.maxBranches || 3); }
+    if (state.layout.mode === 'snowflake') { depthMax = Math.min(depthMax, 5); branchMax = Math.min(branchMax, state.layout.maxBranches || 6); }
+    if (state.params.center) { depthMax = Math.min(depthMax, 5); branchMax = Math.min(branchMax, 8); }
+    if (effectiveBranches >= 8) depthMax = Math.min(depthMax, 4);
+    else if (effectiveBranches >= 6) depthMax = Math.min(depthMax, 5);
+    if (state.params.depth >= 6) branchMax = Math.min(branchMax, 5);
+    else if (state.params.depth >= 5) branchMax = Math.min(branchMax, 7);
 
     return { depthMax, branchMax };
 }
 
 function refreshDerivedState(syncControls = false) {
     scene.limits = computeDynamicLimits();
-
     const depthSlider = document.getElementById('s-depth');
     const branchSlider = document.getElementById('s-branches');
     depthSlider.max = String(scene.limits.depthMax);
     branchSlider.max = String(scene.limits.branchMax);
 
     let clamped = false;
-    if (state.params.depth > scene.limits.depthMax) {
-        state.params.depth = scene.limits.depthMax;
-        clamped = true;
-    }
-    if (state.params.branches > scene.limits.branchMax) {
-        state.params.branches = scene.limits.branchMax;
-        clamped = true;
-    }
+    if (state.params.depth > scene.limits.depthMax) { state.params.depth = scene.limits.depthMax; clamped = true; }
+    if (state.params.branches > scene.limits.branchMax) { state.params.branches = scene.limits.branchMax; clamped = true; }
 
-    scene.baseHue = hue(color(state.baseColor));
+    scene.baseHue = hexToHue(state.baseColor);
     scene.budget = computeRenderBudget();
 
-    if (syncControls || clamped) {
-        syncParameterControls();
-    }
-
+    if (syncControls || clamped) syncParameterControls();
     updateBudgetUI(scene.budget);
 }
 
+// ══════════════════════════════════════════════════
+// UI 交互
+// ══════════════════════════════════════════════════
 function renderPresets() {
     const row = document.getElementById('presetRow');
     row.innerHTML = '';
-
     PRESETS.forEach(preset => {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -1566,7 +1643,6 @@ function renderPresets() {
 function renderPalette() {
     const row = document.getElementById('paletteRow');
     row.innerHTML = '';
-
     PALETTES.forEach(hex => {
         const swatch = document.createElement('button');
         swatch.type = 'button';
@@ -1608,7 +1684,6 @@ function bindUI() {
     document.querySelectorAll('.shape-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const shape = btn.dataset.shape;
-
             if (state.selectedShapes.includes(shape)) {
                 if (state.selectedShapes.length > 1) {
                     state.selectedShapes = state.selectedShapes.filter(item => item !== shape);
@@ -1616,7 +1691,6 @@ function bindUI() {
             } else {
                 state.selectedShapes.push(shape);
             }
-
             state.activePreset = null;
             updateShapeButtons();
             updatePresetActiveState();
@@ -1626,9 +1700,7 @@ function bindUI() {
     });
 
     const queue = document.getElementById('shape-queue');
-    queue.addEventListener('dragover', event => {
-        event.preventDefault();
-    });
+    queue.addEventListener('dragover', event => event.preventDefault());
 }
 
 function bindToggle(id, key) {
@@ -1658,49 +1730,35 @@ function renderQueue() {
             chip.classList.add('dragging');
             event.dataTransfer.effectAllowed = 'move';
         });
-
         chip.addEventListener('dragend', () => {
             dragSrcIdx = null;
             chip.classList.remove('dragging');
             clearDropIndicators();
         });
-
         chip.addEventListener('dragover', event => {
             event.preventDefault();
             clearDropIndicators();
-
             const rect = chip.getBoundingClientRect();
             const insertBefore = event.clientX < rect.left + rect.width / 2;
             const indicator = document.createElement('div');
             indicator.className = 'drop-indicator';
-            if (insertBefore) {
-                chip.parentNode.insertBefore(indicator, chip);
-            } else {
-                chip.parentNode.insertBefore(indicator, chip.nextSibling);
-            }
+            if (insertBefore) chip.parentNode.insertBefore(indicator, chip);
+            else chip.parentNode.insertBefore(indicator, chip.nextSibling);
         });
-
         chip.addEventListener('drop', event => {
             event.preventDefault();
-            if (dragSrcIdx === null) {
-                return;
-            }
-
+            if (dragSrcIdx === null) return;
             const targetIdx = Number(chip.dataset.idx);
             const rect = chip.getBoundingClientRect();
             const insertBefore = event.clientX < rect.left + rect.width / 2;
             const moved = state.selectedShapes.splice(dragSrcIdx, 1)[0];
             let newIndex = insertBefore ? targetIdx : targetIdx + 1;
-            if (dragSrcIdx < newIndex) {
-                newIndex--;
-            }
-
+            if (dragSrcIdx < newIndex) newIndex--;
             state.selectedShapes.splice(newIndex, 0, moved);
             state.activePreset = null;
             renderQueue();
             updatePresetActiveState();
         });
-
         chip.querySelector('.chip-remove').addEventListener('click', event => {
             event.stopPropagation();
             if (state.selectedShapes.length > 1) {
@@ -1712,7 +1770,6 @@ function renderQueue() {
                 refreshDerivedState();
             }
         });
-
         queue.appendChild(chip);
     });
 }
@@ -1723,9 +1780,7 @@ function clearDropIndicators() {
 
 function applyPreset(presetId) {
     const preset = PRESETS.find(item => item.id === presetId);
-    if (!preset) {
-        return;
-    }
+    if (!preset) return;
 
     state.activePreset = preset.id;
     state.selectedShapes = [...preset.shapes];
@@ -1782,49 +1837,39 @@ function updatePresetActiveState() {
     });
 }
 
+// ══════════════════════════════════════════════════
+// 工具函数
+// ══════════════════════════════════════════════════
 function buildStarfield() {
     const total = 160;
     scene.stars = [];
-
     for (let i = 0; i < total; i++) {
         scene.stars.push({
-            x: random(),
-            y: random(),
-            size: random(0.4, 1.7),
-            speed: random(0.25, 1.4),
-            phase: random(TWO_PI),
-            alphaBase: random(0.16, 0.52),
-            alphaSwing: random(0.04, 0.24),
-            hueOffset: random(-28, 30)
+            x: Math.random(),
+            y: Math.random(),
+            size: Math.random() * 1.3 + 0.4,
+            speed: Math.random() * 1.15 + 0.25,
+            phase: Math.random() * Math.PI * 2,
+            alphaBase: Math.random() * 0.36 + 0.16,
+            alphaSwing: Math.random() * 0.2 + 0.04,
+            hueOffset: Math.random() * 58 - 28
         });
     }
 }
 
 function getSceneViewport() {
     const panelRect = document.getElementById('ui-panel').getBoundingClientRect();
-
     if (windowWidth < 920) {
         const topInset = panelRect.height;
-        return {
-            x: 0,
-            y: topInset,
-            w: width,
-            h: max(height - topInset, height * 0.48)
-        };
+        return { x: 0, y: topInset, w: width, h: Math.max(height - topInset, height * 0.48) };
     }
-
-    return {
-        x: panelRect.width,
-        y: 0,
-        w: width - panelRect.width,
-        h: height
-    };
+    return { x: panelRect.width, y: 0, w: width - panelRect.width, h: height };
 }
 
-function hsbToRgba(h, s, b, a) {
-    const c = color((h + 360) % 360, s, b, a);
-    const [r, g, blue, alphaValue] = c.levels;
-    return `rgba(${r}, ${g}, ${blue}, ${alphaValue / 255})`;
+// 高性能 map 替代 p5 的 map()，避免 constrain 的额外检查
+function mapRange(value, inMin, inMax, outMin, outMax) {
+    const t = Math.max(0, Math.min(1, (value - inMin) / (inMax - inMin)));
+    return outMin + t * (outMax - outMin);
 }
 
 function formatNumber(value) {
@@ -1832,15 +1877,9 @@ function formatNumber(value) {
 }
 
 function rgbToHex(rgbString) {
-    if (!rgbString || rgbString.startsWith('#')) {
-        return rgbString || '';
-    }
-
+    if (!rgbString || rgbString.startsWith('#')) return rgbString || '';
     const matches = rgbString.match(/\d+/g);
-    if (!matches) {
-        return '';
-    }
-
+    if (!matches) return '';
     return `#${matches.slice(0, 3).map(num => Number(num).toString(16).padStart(2, '0')).join('')}`;
 }
 
