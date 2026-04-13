@@ -908,26 +908,32 @@ const DEFAULT_STYLE = {
 };
 
 const PRESETS = [
-    { id:'nebula', name:'星云晶花', desc:'冷色虹辉 · 适合第一眼吸引', color:'#7df1ff',
+    { id:'nebula', name:'星云晶花', desc:'冷色虹辉 · 适合第一眼吸引', color:'#7df1ff', engine:'radial',
       shapes:['triangle','flower','circle'],
       params:{depth:5,scale:0.49,branches:0,layerRot:12,spiral:0.16,spread:1.12,center:false,mirror:false,spin:0.22,pulse:0.05,hueShift:14}, layout:{} },
-    { id:'mandala', name:'法阵绽放', desc:'高对称度 · 法阵与万花筒', color:'#ff8ddd',
+    { id:'mandala', name:'法阵绽放', desc:'高对称度 · 法阵与万花筒', color:'#ff8ddd', engine:'radial',
       shapes:['star5','circle','cross4'],
       params:{depth:5,scale:0.44,branches:0,layerRot:29,spiral:-0.06,spread:0.94,center:true,mirror:true,spin:0.12,pulse:0.04,hueShift:18}, layout:{alternateRotation:12} },
-    { id:'coral', name:'珊瑚脉络', desc:'暖色扩散 · 生长中的有机体', color:'#ff8f66',
+    { id:'coral', name:'珊瑚脉络', desc:'暖色扩散 · 生长中的有机体', color:'#ff8f66', engine:'radial',
       shapes:['flower','pentagon','circle'],
       params:{depth:5,scale:0.53,branches:0,layerRot:10,spiral:0.35,spread:1.22,center:false,mirror:false,spin:0.18,pulse:0.08,hueShift:16}, layout:{branchJitterDeg:5} },
-    { id:'prism', name:'棱镜风暴', desc:'高张力放射 · 强烈视觉冲击', color:'#a968ff',
+    { id:'prism', name:'棱镜风暴', desc:'高张力放射 · 强烈视觉冲击', color:'#a968ff', engine:'radial',
       shapes:['hexagon','triangle','square'],
       params:{depth:5,scale:0.42,branches:7,layerRot:24,spiral:0.24,spread:1.38,center:false,mirror:true,spin:0.32,pulse:0.05,hueShift:28}, layout:{branchJitterDeg:2} },
-    { id:'tree', name:'分形树', desc:'向上生长 · 枝干与叶冠层', color:'#8eea7d',
-      shapes:['circle','flower'],
-      params:{depth:6,scale:0.62,branches:2,layerRot:0,spiral:0,spread:1.0,center:false,mirror:false,spin:0,pulse:0.02,hueShift:8},
-      layout:{mode:'tree',maxBranches:3,arcDeg:70,directionDeg:-90,offsetXScale:1,offsetYScale:1,lift:0.4,swayDeg:6,radiusScaleDesktop:0.12,radiusScaleMobile:0.1,centerYBias:0.92,branchJitterDeg:3} },
-    { id:'snowflake', name:'分形雪花', desc:'六向对称 · 冰晶展开', color:'#b4e7ff',
+    { id:'tree', name:'分形树', desc:'经典分形 · 枝干递归 + 叶端组合', color:'#8eea7d', engine:'tree',
+      shapes:['flower','circle','star5'],
+      params:{depth:7,scale:0.68,branches:2,layerRot:0,spiral:0.12,spread:1.05,center:false,mirror:false,spin:0,pulse:0.02,hueShift:10},
+      layout:{mode:'tree',maxBranches:3,arcDeg:52,directionDeg:-90,offsetXScale:1,offsetYScale:1,lift:0.4,swayDeg:8,radiusScaleDesktop:0.12,radiusScaleMobile:0.1,centerYBias:0.92,branchJitterDeg:3} },
+    { id:'snowflake', name:'分形雪花', desc:'Koch 递归 · 冰晶边界更锋利', color:'#b4e7ff', engine:'koch',
       shapes:['hexagon','cross4','circle'],
-      params:{depth:4,scale:0.49,branches:6,layerRot:8,spiral:0.02,spread:1.0,center:false,mirror:true,spin:0.08,pulse:0.02,hueShift:10},
-      layout:{mode:'snowflake',maxBranches:6,branchFloor:6,arcDeg:360,directionDeg:-90,offsetXScale:1,offsetYScale:1,radiusScaleDesktop:0.31,radiusScaleMobile:0.24,centerYBias:0.52,alternateRotation:30,branchJitterDeg:1.5} }
+      params:{depth:5,scale:0.49,branches:0,layerRot:0,spiral:0.06,spread:1.0,center:false,mirror:false,spin:0.16,pulse:0.02,hueShift:10},
+      layout:{mode:'snowflake',maxBranches:6,branchFloor:6,arcDeg:360,directionDeg:-90,offsetXScale:1,offsetYScale:1,radiusScaleDesktop:0.31,radiusScaleMobile:0.24,centerYBias:0.52,alternateRotation:30,branchJitterDeg:1.5} },
+    { id:'fern', name:'蕨类生长', desc:'IFS 迭代 · 生命感点云', color:'#6effa7', engine:'fern',
+      shapes:['circle','flower'],
+      params:{depth:6,scale:0.55,branches:0,layerRot:0,spiral:0.0,spread:1.0,center:false,mirror:false,spin:0.0,pulse:0.0,hueShift:8}, layout:{centerYBias:0.56} },
+    { id:'phyllo', name:'斐波那契花盘', desc:'黄金角排布 · 花盘/种子涌现', color:'#ffba52', engine:'phyllotaxis',
+      shapes:['circle','star5','flower'],
+      params:{depth:6,scale:0.42,branches:0,layerRot:0,spiral:0.18,spread:1.22,center:false,mirror:false,spin:0.12,pulse:0.02,hueShift:18}, layout:{centerYBias:0.54} }
 ];
 
 // ══════════════════════════════════════════════════
@@ -937,6 +943,7 @@ const state = {
     selectedShapes: ['triangle','flower','circle'],
     baseColor: '#7df1ff',
     activePreset: 'nebula',
+    engine: 'radial',
     params: { depth:5,scale:0.49,branches:0,layerRot:12,spiral:0.16,spread:1.12,center:false,mirror:false,spin:0.22,pulse:0.05,hueShift:14 },
     layout: { ...DEFAULT_STYLE }
 };
@@ -953,7 +960,8 @@ const scene = {
     bgDirty: true,          // 背景需要重绘标志
     lastRenderTime: 0,      // 上次分形重绘的时间戳
     renderThrottleMs: 80,   // 拖拽滑块时的重绘节流（ms）
-    spriteCache: new Map()
+    spriteCache: new Map(),
+    kochCache: new Map()
 };
 
 // ── 效果开关（默认全部关闭，用户可通过设置按钮打开对比）──
@@ -965,6 +973,15 @@ const fx = {
     stroke: false,     // 分形节点描边
     frame: false       // 场景边框虚线
 };
+
+function getEngine() {
+    // Prefer explicit preset engine; fall back to old layout-based tree flag.
+    return state.engine || (state.layout.mode === 'tree' ? 'tree' : 'radial');
+}
+
+function engineShouldAutoRotate(engine) {
+    return engine === 'radial' || engine === 'koch' || engine === 'phyllotaxis';
+}
 
 // ── FPS 追踪 ──
 const fpsTracker = { frames: 0, lastTime: 0, display: 0 };
@@ -1092,7 +1109,8 @@ function draw() {
     // ── 3. 主画布合成（极快：只是贴两张图片）──
     const ctx = drawingContext;
     const sceneBox = getSceneViewport();
-    const isTreeMode = state.layout.mode === 'tree';
+    const engine = getEngine();
+    const shouldRotate = engineShouldAutoRotate(engine);
 
     // 贴背景
     ctx.drawImage(scene.bgBuffer.canvas, 0, 0);
@@ -1105,7 +1123,7 @@ function draw() {
 
     ctx.save();
     ctx.translate(centerX, centerY);
-    if (!isTreeMode) {
+    if (shouldRotate) {
         ctx.rotate(clockTime * 0.45 * state.params.spin * 6.5);
     }
     if (state.params.pulse > 0) {
@@ -1189,20 +1207,23 @@ function renderFractalToBuffer(baseHue, budget, clockTime) {
     const initialRadius = Math.max(42, Math.min(sceneBox.w, sceneBox.h) *
         (windowWidth < 920 ? state.layout.radiusScaleMobile : state.layout.radiusScaleDesktop));
 
-    const isTreeMode = state.layout.mode === 'tree';
+    const engine = getEngine();
 
     ctx.save();
     ctx.translate(cx, cy);
 
-    if (isTreeMode) {
-        // 分形树的 centerYBias 需要向下偏移画布中心
+    if (engine === 'tree') {
         const treeOffsetY = fbH * (state.layout.centerYBias - 0.5);
-        ctx.translate(0, treeOffsetY);
-        renderFractalTree(ctx, 0, 0, initialRadius*2.5, budget.effectiveDepth.toFixed? budget.effectiveDepth : state.params.depth,
-            state.params.scale, baseHue, 0, budget.qualityMode, clockTime);
+        ctx.translate(0, treeOffsetY + initialRadius * 0.82);
+        renderFractalTree(ctx, 0, 0, initialRadius * 1.55, budget.effectiveDepth, state.params.scale, baseHue, 0, budget.qualityMode, clockTime);
+    } else if (engine === 'koch') {
+        renderKochSnowflake(ctx, initialRadius * 1.05, budget.effectiveDepth, baseHue, budget.qualityMode, clockTime);
+    } else if (engine === 'fern') {
+        renderBarnsleyFern(ctx, initialRadius * 1.12, budget.effectiveDepth, baseHue, budget.qualityMode);
+    } else if (engine === 'phyllotaxis') {
+        renderPhyllotaxis(ctx, initialRadius * 1.05, budget.effectiveDepth, baseHue, budget.qualityMode, clockTime);
     } else {
-        renderFractalRadial(ctx, 0, 0, initialRadius, budget.effectiveDepth,
-            state.params.scale, baseHue, 0, budget.qualityMode, clockTime);
+        renderFractalRadial(ctx, 0, 0, initialRadius, budget.effectiveDepth, state.params.scale, baseHue, 0, budget.qualityMode, clockTime);
     }
 
     ctx.restore();
@@ -1302,13 +1323,14 @@ function renderFractalTree(ctx, x, y, trunkLen, depthRemaining, scaleFactor, bas
     if (depthRemaining < 0.05 || trunkLen < 1.5) return;
 
     const layoutCfg = state.layout;
-    const maxDepth = state.params.depth;
+    const maxDepth = Math.max(1, state.params.depth);
     const progress = 1 - (depthRemaining / maxDepth);
 
-    const thickness = Math.max(1, trunkLen * 0.12) * (depthRemaining < 1 ? depthRemaining : 1);
-    const trunkHue = (35 + progress * ((baseHue + 360 - 35) % 360)) % 360;
-    const trunkSat = 40 + progress * 35;
-    const trunkBri = 28 + progress * 32;
+    const depthAlpha = depthRemaining < 1 ? depthRemaining : 1;
+    const thickness = Math.max(1, trunkLen * 0.12) * depthAlpha;
+    const trunkHue = (32 + progress * ((baseHue + 360 - 32) % 360)) % 360;
+    const trunkSat = 36 + progress * 38;
+    const trunkBri = 22 + progress * 34;
 
     // 微风
     const swayAmt = (layoutCfg.swayDeg || 6) * Math.PI / 180;
@@ -1320,13 +1342,20 @@ function renderFractalTree(ctx, x, y, trunkLen, depthRemaining, scaleFactor, bas
 
     const endY = -trunkLen;
 
-    // 枝干
+    // 枝干（双层描边：暗层 + 高光，增强立体感）
+    ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(0, endY);
-    ctx.strokeStyle = hsbToRgbaFast(trunkHue, trunkSat, trunkBri, depthRemaining < 1 ? depthRemaining*0.9 : 0.9);
+    ctx.strokeStyle = hsbToRgbaFast(trunkHue, trunkSat, trunkBri, 0.82 * depthAlpha);
     ctx.lineWidth = thickness;
-    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, endY);
+    ctx.strokeStyle = hsbToRgbaFast((trunkHue + 10) % 360, trunkSat * 0.55, Math.min(100, trunkBri + 26), 0.28 * depthAlpha);
+    ctx.lineWidth = Math.max(0.6, thickness * 0.35);
     ctx.stroke();
 
     ctx.translate(0, endY);
@@ -1334,22 +1363,11 @@ function renderFractalTree(ctx, x, y, trunkLen, depthRemaining, scaleFactor, bas
     // 叶子层
     const isLeafLayer = depthRemaining <= 1.5;
     if (isLeafLayer && depthRemaining > 0) {
-        const leafShape = state.selectedShapes[layer % state.selectedShapes.length];
-        const leafSize = trunkLen * scaleFactor * 0.6;
+        const leafSize = Math.max(2, trunkLen * scaleFactor * 0.62);
         const leafHue = (baseHue + layer * state.params.hueShift + 360) % 360;
         const leafBri = Math.min(98, 55 + layer * 5);
-        const leafAlpha = Math.min(1, depthRemaining) * 0.85;
-
-        ctx.fillStyle = fx.gradient
-            ? createGradientFast(ctx, leafSize, leafHue, leafBri, leafAlpha)
-            : hsbToRgbaFast(leafHue, 74, Math.min(100, leafBri+12), leafAlpha);
-        traceShapePath(ctx, leafShape, leafSize);
-        ctx.fill();
-        if (fx.stroke && leafSize > 3) {
-            ctx.strokeStyle = hsbToRgbaFast((leafHue+20)%360, 50, Math.min(100, leafBri+20), leafAlpha*0.3);
-            ctx.lineWidth = Math.max(0.3, leafSize*0.04);
-            ctx.stroke();
-        }
+        const leafAlpha = Math.min(1, depthRemaining) * 0.88;
+        drawLeafCluster(ctx, leafSize, leafHue, leafBri, leafAlpha, layer, qualityMode, clockTime);
     }
 
     // 分支
@@ -1357,7 +1375,9 @@ function renderFractalTree(ctx, x, y, trunkLen, depthRemaining, scaleFactor, bas
         const actualBranches = Math.max(2, Math.min(state.params.branches > 0 ? state.params.branches : 2, layoutCfg.maxBranches || 3));
         const childLen = trunkLen * scaleFactor;
         const nextDepth = depthRemaining - 1;
-        const arcHalf = ((layoutCfg.arcDeg || 70) / 2) * Math.PI / 180;
+        const arcDeg = (layoutCfg.arcDeg || 52) * (0.72 + state.params.spread * 0.28);
+        const arcHalf = (arcDeg / 2) * Math.PI / 180;
+        const twist = state.params.spiral * 0.18;
 
         for (let i = 0; i < actualBranches; i++) {
             let brAngle;
@@ -1366,7 +1386,8 @@ function renderFractalTree(ctx, x, y, trunkLen, depthRemaining, scaleFactor, bas
 
             const jitter = Math.sin(clockTime*0.8 + layer*0.7 + i*1.9) * ((layoutCfg.branchJitterDeg||3)*Math.PI/180);
             brAngle += jitter;
-            const spiralMod = 1 + state.params.spiral * 0.15 * (i%2===0 ? 1 : -1);
+            brAngle += twist * (layer * 0.55 + i * 0.3);
+            const spiralMod = 1 + state.params.spiral * 0.08 * (i%2===0 ? 1 : -1);
 
             ctx.save();
             ctx.rotate(brAngle);
@@ -1379,6 +1400,259 @@ function renderFractalTree(ctx, x, y, trunkLen, depthRemaining, scaleFactor, bas
         }
     }
     ctx.restore();
+}
+
+function drawLeafCluster(ctx, baseSize, hueValue, brightness, alpha, layer, qualityMode, clockTime) {
+    const count = qualityMode === 'protected' ? 2 : 4;
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (let i = 0; i < count; i++) {
+        const s = shapes[(layer + i) % shapes.length];
+        const spin = (clockTime * 0.6 + layer * 0.18 + i * 1.1) * (state.params.spiral * 0.35 + 0.22);
+        const r = baseSize * (0.32 + i * 0.12);
+        const dx = Math.cos(spin) * baseSize * (0.14 + i * 0.05);
+        const dy = Math.sin(spin) * baseSize * (0.12 + i * 0.04);
+
+        ctx.save();
+        ctx.translate(dx, dy);
+        ctx.rotate(spin * 0.85);
+        ctx.fillStyle = fx.gradient
+            ? createGradientFast(ctx, r, (hueValue + i * 10) % 360, brightness, alpha * (0.85 - i * 0.12))
+            : hsbToRgbaFast((hueValue + i * 10) % 360, 74, Math.min(100, brightness + 10), alpha * (0.85 - i * 0.12));
+        traceShapePath(ctx, s, r);
+        ctx.fill();
+        if (fx.stroke && r > 3 && qualityMode !== 'protected') {
+            ctx.strokeStyle = hsbToRgbaFast((hueValue + 22 + i * 8) % 360, 45, Math.min(100, brightness + 20), alpha * 0.18);
+            ctx.lineWidth = Math.max(0.3, r * 0.05);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    ctx.restore();
+}
+
+// ══════════════════════════════════════════════════
+// Koch 雪花引擎（明显差异：线段分形边界）
+// ══════════════════════════════════════════════════
+function renderKochSnowflake(ctx, radius, depthValue, baseHue, qualityMode, clockTime) {
+    const depth = Math.max(0, Math.min(7, Math.round(depthValue)));
+    const points = getKochPoints(depth);
+    const hueValue = (baseHue + 10) % 360;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // 外层冰晶雾化边
+    ctx.beginPath();
+    for (let i = 0; i < points.length; i++) {
+        const px = points[i].x * radius;
+        const py = points[i].y * radius;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+
+    ctx.strokeStyle = hsbToRgbaFast((hueValue + 18) % 360, 42, 96, qualityMode === 'protected' ? 0.22 : 0.32);
+    ctx.lineWidth = qualityMode === 'protected' ? 1.1 : 1.6;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // 内层高光
+    ctx.strokeStyle = hsbToRgbaFast(hueValue, 26, 100, 0.55);
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+
+    // 点状结晶（沿边采样少量点，避免过密）
+    const stampEvery = depth >= 6 ? 24 : depth >= 5 ? 18 : 12;
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
+    for (let i = 0; i < points.length; i += stampEvery) {
+        const p = points[i];
+        const s = shapes[(i / stampEvery) % shapes.length | 0];
+        const r = Math.max(1.2, radius * 0.018) * (0.9 + Math.sin(clockTime * 0.7 + i * 0.04) * 0.25);
+        ctx.save();
+        ctx.translate(p.x * radius, p.y * radius);
+        ctx.rotate(clockTime * 0.25 + i * 0.02);
+        ctx.fillStyle = fx.gradient
+            ? createGradientFast(ctx, r * 1.05, (hueValue + i * 0.02) % 360, 98, 0.7)
+            : hsbToRgbaFast((hueValue + i * 0.02) % 360, 30, 100, 0.65);
+        traceShapePath(ctx, s, r);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    ctx.restore();
+}
+
+function getKochPoints(depth) {
+    const key = String(depth);
+    if (scene.kochCache.has(key)) return scene.kochCache.get(key);
+
+    // Normalized equilateral triangle (counter-clockwise), centered roughly at origin.
+    let pts = [
+        { x: 0, y: -1 },
+        { x: Math.cos(Math.PI / 6), y: Math.sin(Math.PI / 6) },
+        { x: -Math.cos(Math.PI / 6), y: Math.sin(Math.PI / 6) }
+    ];
+
+    for (let d = 0; d < depth; d++) {
+        const next = [];
+        for (let i = 0; i < pts.length; i++) {
+            const a = pts[i];
+            const b = pts[(i + 1) % pts.length];
+            const vx = (b.x - a.x) / 3;
+            const vy = (b.y - a.y) / 3;
+            const p1 = { x: a.x + vx, y: a.y + vy };
+            const p2 = { x: a.x + vx * 2, y: a.y + vy * 2 };
+
+            // rotate v by -60 degrees to create outward bump (works with CCW triangle)
+            const rx = vx * 0.5 + vy * (Math.sqrt(3) / 2);
+            const ry = -vx * (Math.sqrt(3) / 2) + vy * 0.5;
+            const peak = { x: p1.x + rx, y: p1.y + ry };
+
+            next.push(a, p1, peak, p2);
+        }
+        pts = next;
+    }
+
+    scene.kochCache.set(key, pts);
+    return pts;
+}
+
+// ══════════════════════════════════════════════════
+// Barnsley Fern（IFS 点云，明显差异：有机叶片）
+// ══════════════════════════════════════════════════
+function renderBarnsleyFern(ctx, radius, depthValue, baseHue, qualityMode) {
+    const depth = Math.max(0, Math.round(depthValue));
+    const maxPoints = qualityMode === 'protected' ? 12000 : qualityMode === 'balanced' ? 17000 : 24000;
+    const points = Math.min(maxPoints, 6000 + depth * 2500);
+
+    const rnd = mulberry32(seedFromState(0xBADC0DE));
+    let x = 0, y = 0;
+
+    // Fit fern into viewport: x in ~[-2.2, 2.7], y in ~[0, 10]
+    const sx = radius * 0.22;
+    const sy = radius * 0.19;
+    const ox = 0;
+    const oy = radius * 0.55;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    const hueValue = (baseHue + 110) % 360;
+    ctx.fillStyle = hsbToRgbaFast(hueValue, 52, 92, qualityMode === 'protected' ? 0.35 : 0.45);
+
+    for (let i = 0; i < points + 30; i++) {
+        const r = rnd();
+        let nx, ny;
+        if (r < 0.01) {
+            nx = 0;
+            ny = 0.16 * y;
+        } else if (r < 0.86) {
+            nx = 0.85 * x + 0.04 * y;
+            ny = -0.04 * x + 0.85 * y + 1.6;
+        } else if (r < 0.93) {
+            nx = 0.2 * x - 0.26 * y;
+            ny = 0.23 * x + 0.22 * y + 1.6;
+        } else {
+            nx = -0.15 * x + 0.28 * y;
+            ny = 0.26 * x + 0.24 * y + 0.44;
+        }
+        x = nx; y = ny;
+
+        if (i < 30) continue; // burn-in
+
+        const px = ox + x * sx;
+        const py = oy - y * sy;
+        ctx.fillRect(px, py, 1, 1);
+    }
+
+    // highlight speckles
+    if (qualityMode !== 'protected') {
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        for (let i = 0; i < 180; i++) {
+            const px = (rnd() - 0.5) * radius * 0.85;
+            const py = (rnd() - 0.7) * radius * 0.9;
+            ctx.fillRect(px, py, 1, 1);
+        }
+    }
+
+    ctx.restore();
+}
+
+// ══════════════════════════════════════════════════
+// Phyllotaxis（斐波那契/黄金角花盘）
+// ══════════════════════════════════════════════════
+function renderPhyllotaxis(ctx, radius, depthValue, baseHue, qualityMode, clockTime) {
+    const depth = Math.max(0, Math.round(depthValue));
+    const maxSeeds = qualityMode === 'protected' ? 3500 : qualityMode === 'balanced' ? 6000 : 9000;
+    const seeds = Math.min(maxSeeds, 1200 + depth * 950);
+    const ga = Math.PI * (3 - Math.sqrt(5)); // golden angle
+    const c = radius * (0.017 + state.params.spread * 0.004);
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    const hueValue = (baseHue + 42) % 360;
+    const rnd = mulberry32(seedFromState(0xF1B0));
+
+    for (let i = 0; i < seeds; i++) {
+        const a = i * ga + clockTime * state.params.spiral * 0.08;
+        const rr = c * Math.sqrt(i);
+        const px = Math.cos(a) * rr;
+        const py = Math.sin(a) * rr;
+
+        const t = i / seeds;
+        const bri = 40 + t * 58;
+        const alpha = qualityMode === 'protected' ? 0.22 : 0.28;
+
+        if (i % 55 === 0 && qualityMode !== 'protected') {
+            const s = shapes[(i / 55) % shapes.length | 0];
+            const r = Math.max(1.4, radius * 0.013) * (0.9 + rnd() * 0.5);
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(a + i * 0.01);
+            ctx.fillStyle = fx.gradient
+                ? createGradientFast(ctx, r * 1.05, (hueValue + t * 80) % 360, Math.min(100, bri + 12), 0.55)
+                : hsbToRgbaFast((hueValue + t * 80) % 360, 56, Math.min(100, bri + 10), 0.5);
+            traceShapePath(ctx, s, r);
+            ctx.fill();
+            ctx.restore();
+        } else {
+            ctx.fillStyle = hsbToRgbaFast((hueValue + t * 90) % 360, 46, Math.min(100, bri + 10), alpha);
+            ctx.fillRect(px, py, 1, 1);
+        }
+    }
+
+    ctx.restore();
+}
+
+function seedFromState(extra) {
+    const s = `${state.baseColor}|${state.engine}|${state.params.depth}|${state.params.scale}|${state.params.spiral}|${state.params.spread}|${extra}`;
+    return hashString(s) >>> 0;
+}
+
+function hashString(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+}
+
+function mulberry32(seed) {
+    let t = seed >>> 0;
+    return function () {
+        t += 0x6D2B79F5;
+        let x = Math.imul(t ^ (t >>> 15), 1 | t);
+        x ^= x + Math.imul(x ^ (x >>> 7), 61 | x);
+        return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+    };
 }
 
 // ══════════════════════════════════════════════════
@@ -1471,14 +1745,88 @@ function drawSceneFrame(ctx, box, baseHue) {
 // 渲染预算系统
 // ══════════════════════════════════════════════════
 function computeRenderBudget() {
-    const avgB = state.selectedShapes.reduce((s,sh)=>s+resolveBranchCount(sh),0)/state.selectedShapes.length;
-    const bf = avgB + (state.params.center ? 1 : 0);
-    const est = estimateNodes(state.params.depth, bf);
-    let ed = state.params.depth, qm = 'cinematic', ml = '辉光全开', dt = '画面正在以完整效果运行。', nc = '';
-    if(est>14000){qm='balanced';ml='平衡模式';dt='系统会减少深层细节，优先保证流畅。';nc='warn';}
-    if(est>32000){qm='protected';ml='保护模式';dt='系统主动限制递归细节，避免卡顿。';nc='danger';}
-    while(estimateNodes(ed,bf)>50000&&ed>1) ed-=0.5;
-    return {estimate:est,branchFactor:bf,qualityMode:qm,modeLabel:ml,detail:dt,noteClass:nc,effectiveDepth:Math.max(0,ed),isReduced:ed<state.params.depth};
+    const engine = getEngine();
+    let estimate = 0;
+    let branchFactor = 0;
+    let secondaryText = '';
+    let effectiveDepth = state.params.depth;
+
+    if (engine === 'tree') {
+        const branches = Math.max(2, Math.min(state.params.branches > 0 ? state.params.branches : 2, state.layout.maxBranches || 3));
+        branchFactor = branches + (state.params.center ? 1 : 0);
+        estimate = estimateNodes(state.params.depth, branchFactor);
+        secondaryText = `树枝分叉 ${branches}`;
+    } else if (engine === 'koch') {
+        const d = Math.max(0, Math.min(7, Math.round(state.params.depth)));
+        estimate = Math.round(3 * Math.pow(4, d));
+        secondaryText = `Koch 深度 ${d}`;
+    } else if (engine === 'fern') {
+        const d = Math.max(0, Math.round(state.params.depth));
+        const maxPoints = 24000;
+        estimate = Math.min(maxPoints, 6000 + d * 2500);
+        secondaryText = `IFS 点云 ${new Intl.NumberFormat('zh-CN').format(estimate)}`;
+    } else if (engine === 'phyllotaxis') {
+        const d = Math.max(0, Math.round(state.params.depth));
+        const maxSeeds = 9000;
+        estimate = Math.min(maxSeeds, 1200 + d * 950);
+        secondaryText = `黄金角种子 ${new Intl.NumberFormat('zh-CN').format(estimate)}`;
+    } else {
+        const avgB = state.selectedShapes.reduce((s,sh)=>s+resolveBranchCount(sh),0)/state.selectedShapes.length;
+        branchFactor = avgB + (state.params.center ? 1 : 0);
+        estimate = estimateNodes(state.params.depth, branchFactor);
+        secondaryText = `平均分裂 ${branchFactor.toFixed(1)}`;
+    }
+
+    let qualityMode = 'cinematic';
+    let modeLabel = '辉光全开';
+    let detail = '画面正在以完整效果运行。';
+    let noteClass = '';
+
+    // thresholds tuned per engine to avoid "looks the same but slower" situations
+    const warnAt = engine === 'koch' ? 12000 : engine === 'fern' ? 15000 : engine === 'phyllotaxis' ? 5500 : engine === 'tree' ? 9000 : 14000;
+    const dangerAt = engine === 'koch' ? 26000 : engine === 'fern' ? 22000 : engine === 'phyllotaxis' ? 8000 : engine === 'tree' ? 20000 : 32000;
+    const hardCap = engine === 'koch' ? 32000 : engine === 'fern' ? 26000 : engine === 'phyllotaxis' ? 9000 : engine === 'tree' ? 32000 : 50000;
+
+    if (estimate > warnAt) {
+        qualityMode = 'balanced';
+        modeLabel = '平衡模式';
+        detail = '系统会减少深层细节，优先保证流畅。';
+        noteClass = 'warn';
+    }
+    if (estimate > dangerAt) {
+        qualityMode = 'protected';
+        modeLabel = '保护模式';
+        detail = '系统主动限制细节，避免卡顿。';
+        noteClass = 'danger';
+    }
+
+    // auto-reduce depth to stay under hard cap for recursive engines
+    if (engine === 'radial' || engine === 'tree') {
+        while (estimateNodes(effectiveDepth, branchFactor) > hardCap && effectiveDepth > 1) effectiveDepth -= 0.5;
+    } else if (engine === 'koch') {
+        while (Math.round(3 * Math.pow(4, Math.max(0, Math.round(effectiveDepth)))) > hardCap && effectiveDepth > 1) effectiveDepth -= 1;
+        secondaryText = `Koch 深度 ${Math.max(0, Math.round(effectiveDepth))}`;
+    } else if (engine === 'fern') {
+        while (Math.min(24000, 6000 + Math.max(0, Math.round(effectiveDepth)) * 2500) > hardCap && effectiveDepth > 1) effectiveDepth -= 1;
+        const reducedPoints = Math.min(24000, 6000 + Math.max(0, Math.round(effectiveDepth)) * 2500);
+        secondaryText = `IFS 点云 ${new Intl.NumberFormat('zh-CN').format(reducedPoints)}`;
+    } else if (engine === 'phyllotaxis') {
+        while (Math.min(9000, 1200 + Math.max(0, Math.round(effectiveDepth)) * 950) > hardCap && effectiveDepth > 1) effectiveDepth -= 1;
+        const reducedSeeds = Math.min(9000, 1200 + Math.max(0, Math.round(effectiveDepth)) * 950);
+        secondaryText = `黄金角种子 ${new Intl.NumberFormat('zh-CN').format(reducedSeeds)}`;
+    }
+
+    return {
+        estimate,
+        branchFactor,
+        secondaryText,
+        qualityMode,
+        modeLabel,
+        detail,
+        noteClass,
+        effectiveDepth: Math.max(0, effectiveDepth),
+        isReduced: effectiveDepth < state.params.depth
+    };
 }
 function estimateNodes(d,bf) {
     let t=0,lc=1; const rd=Math.max(0,Math.ceil(d));
@@ -1488,7 +1836,7 @@ function estimateNodes(d,bf) {
 
 function updateBudgetUI(budget) {
     document.getElementById('metric-nodes').textContent = new Intl.NumberFormat('zh-CN').format(budget.estimate);
-    document.getElementById('metric-branch').textContent = `平均分裂 ${budget.branchFactor.toFixed(1)}`;
+    document.getElementById('metric-branch').textContent = budget.secondaryText || `平均分裂 ${budget.branchFactor.toFixed(1)}`;
     document.getElementById('metric-mode').textContent = budget.modeLabel;
     document.getElementById('metric-state').textContent = budget.isReduced
         ? `系统将深度临时收敛到 ${budget.effectiveDepth.toFixed(1)} 级。`
@@ -1502,13 +1850,32 @@ function updateBudgetUI(budget) {
 }
 
 function computeDynamicLimits() {
+    const engine = getEngine();
     const eb = state.selectedShapes.reduce((s,sh)=>s+resolveBranchCount(sh),0)/state.selectedShapes.length;
     let dm=6,bm=10;
-    if(state.layout.mode==='tree'){dm=8;bm=Math.min(bm,state.layout.maxBranches||3);}
-    if(state.layout.mode==='snowflake'){dm=Math.min(dm,5);bm=Math.min(bm,state.layout.maxBranches||6);}
-    if(state.params.center){dm=Math.min(dm,5);bm=Math.min(bm,8);}
-    if(eb>=8)dm=Math.min(dm,4);else if(eb>=6)dm=Math.min(dm,5);
-    if(state.params.depth>=6)bm=Math.min(bm,5);else if(state.params.depth>=5)bm=Math.min(bm,7);
+
+    if (engine === 'tree' || state.layout.mode === 'tree') {
+        dm = 9;
+        bm = Math.min(bm, state.layout.maxBranches || 3);
+    } else if (engine === 'koch') {
+        dm = 6;
+    } else if (engine === 'fern') {
+        dm = 8;
+    } else if (engine === 'phyllotaxis') {
+        dm = 7;
+    }
+
+    if (state.layout.mode === 'snowflake' && engine === 'radial') {
+        dm = Math.min(dm, 5);
+        bm = Math.min(bm, state.layout.maxBranches || 6);
+    }
+
+    if (engine === 'radial' && state.params.center) { dm = Math.min(dm,5); bm = Math.min(bm,8); }
+    if (engine === 'radial') {
+        if (eb>=8) dm=Math.min(dm,4); else if (eb>=6) dm=Math.min(dm,5);
+        if (state.params.depth>=6) bm=Math.min(bm,5); else if (state.params.depth>=5) bm=Math.min(bm,7);
+    }
+
     return {depthMax:dm,branchMax:bm};
 }
 
@@ -1624,6 +1991,7 @@ function clearDropIndicators(){document.querySelectorAll('.drop-indicator').forE
 function applyPreset(id) {
     const p = PRESETS.find(x=>x.id===id); if(!p) return;
     state.activePreset=p.id; state.selectedShapes=[...p.shapes]; state.baseColor=p.color;
+    state.engine = p.engine || ((p.layout && p.layout.mode === 'tree') ? 'tree' : 'radial');
     state.params={...p.params}; state.layout={...DEFAULT_STYLE,...(p.layout||{})};
     syncUIFromState(); renderQueue(); refreshDerivedState(true);
 }
