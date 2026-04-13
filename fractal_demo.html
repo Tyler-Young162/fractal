@@ -595,6 +595,30 @@
         #settings-btn:hover { color: var(--accent); border-color: rgba(120,242,255,0.3); }
         #settings-btn.active { color: var(--accent); background: rgba(120,242,255,0.12); border-color: rgba(120,242,255,0.3); }
 
+        #guide-btn {
+            position: fixed;
+            top: 12px;
+            right: 164px;
+            z-index: 10;
+            height: 36px;
+            padding: 0 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.55);
+            color: #cbd5e1;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #guide-btn:hover,
+        #guide-btn.active {
+            color: var(--accent);
+            border-color: rgba(120,242,255,0.3);
+            background: rgba(120,242,255,0.12);
+        }
+
         #settings-panel {
             position: fixed;
             top: 56px;
@@ -630,6 +654,106 @@
         .fx-toggle .toggle-switch::after { width: 16px; height: 16px; top: 2px; left: 2px; }
         .fx-toggle .toggle-switch.on::after { transform: translateX(18px); }
 
+        #guide-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(2, 6, 18, 0.68);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        #guide-modal.open { display: flex; }
+        .guide-card {
+            width: min(780px, calc(100vw - 24px));
+            max-height: min(84vh, 900px);
+            overflow: auto;
+            border-radius: 22px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background:
+                radial-gradient(circle at top left, rgba(120,242,255,0.12), transparent 34%),
+                linear-gradient(180deg, rgba(12, 19, 34, 0.98), rgba(8, 12, 24, 0.98));
+            box-shadow: 0 24px 80px rgba(0,0,0,0.46);
+            padding: 24px;
+        }
+        .guide-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .guide-kicker {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-faint);
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+        .guide-title {
+            margin: 0;
+            color: #f8fbff;
+            font-size: 28px;
+            line-height: 1.15;
+        }
+        .guide-subtitle {
+            margin: 8px 0 0;
+            color: #a7b7d0;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+        .guide-close {
+            width: 38px;
+            height: 38px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            color: #dce8ff;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .guide-close:hover {
+            color: var(--accent);
+            border-color: rgba(120,242,255,0.3);
+        }
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .guide-panel {
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.03);
+            padding: 16px;
+        }
+        .guide-panel h3 {
+            margin: 0 0 8px;
+            color: #edf4ff;
+            font-size: 15px;
+        }
+        .guide-panel p {
+            margin: 0;
+            color: #a5b7d2;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .guide-list {
+            margin: 0;
+            padding-left: 18px;
+            color: #a5b7d2;
+            font-size: 13px;
+            line-height: 1.75;
+        }
+        .guide-list li + li { margin-top: 6px; }
+
         @media (max-width: 920px) {
             html,
             body {
@@ -653,6 +777,10 @@
                 grid-template-columns: 1fr;
             }
 
+            .guide-grid {
+                grid-template-columns: 1fr;
+            }
+
             .shape-grid {
                 grid-template-columns: repeat(4, minmax(0, 1fr));
             }
@@ -668,6 +796,12 @@
 
             .shape-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            #guide-btn {
+                right: 60px;
+                padding: 0 10px;
+                letter-spacing: 0.04em;
             }
         }
     </style>
@@ -838,6 +972,7 @@
 </aside>
 
 <!-- 设置按钮 & 面板 -->
+<button id="guide-btn" type="button" title="当前预设说明">说明</button>
 <button id="settings-btn" type="button" title="渲染设置">⚙</button>
 <div id="settings-panel">
     <h3>渲染效果开关</h3>
@@ -867,6 +1002,41 @@
     </div>
 </div>
 <div id="fps-counter">-- FPS</div>
+
+<div id="guide-modal" aria-hidden="true">
+    <div class="guide-card" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+        <div class="guide-head">
+            <div>
+                <span class="guide-kicker">Preset Notes</span>
+                <h2 class="guide-title" id="guide-title">预设说明</h2>
+                <p class="guide-subtitle" id="guide-subtitle"></p>
+            </div>
+            <button class="guide-close" id="guide-close" type="button" aria-label="关闭说明">&times;</button>
+        </div>
+        <div class="guide-grid">
+            <div class="guide-panel">
+                <h3>视觉特点</h3>
+                <p id="guide-character"></p>
+            </div>
+            <div class="guide-panel">
+                <h3>适合的互动方式</h3>
+                <p id="guide-interaction"></p>
+            </div>
+            <div class="guide-panel">
+                <h3>影响最大的参数</h3>
+                <ul class="guide-list" id="guide-params"></ul>
+            </div>
+            <div class="guide-panel">
+                <h3>最佳使用建议</h3>
+                <ul class="guide-list" id="guide-best"></ul>
+            </div>
+        </div>
+        <div class="guide-panel">
+            <h3>客户沟通建议</h3>
+            <p id="guide-client"></p>
+        </div>
+    </div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -914,27 +1084,159 @@ const PRESETS = [
     { id:'mandala', name:'法阵绽放', desc:'高对称度 · 法阵与万花筒', color:'#ff8ddd', engine:'radial',
       shapes:['star5','circle','cross4'],
       params:{depth:5,scale:0.44,branches:0,layerRot:29,spiral:-0.06,spread:0.94,center:true,mirror:true,spin:0.12,pulse:0.04,hueShift:18}, layout:{alternateRotation:12} },
-    { id:'coral', name:'珊瑚脉络', desc:'暖色扩散 · 生长中的有机体', color:'#ff8f66', engine:'radial',
-      shapes:['flower','pentagon','circle'],
-      params:{depth:5,scale:0.53,branches:0,layerRot:10,spiral:0.35,spread:1.22,center:false,mirror:false,spin:0.18,pulse:0.08,hueShift:16}, layout:{branchJitterDeg:5} },
+    { id:'coral', name:'珊瑚脉络', desc:'暖色扩散 · 海底枝状群落', color:'#ff8f66', engine:'coral',
+      shapes:['flower','circle','star5'],
+      params:{depth:6,scale:0.7,branches:3,layerRot:0,spiral:0.12,spread:1.08,center:false,mirror:false,spin:0.04,pulse:0.03,hueShift:14},
+      layout:{maxBranches:3,arcDeg:44,radiusScaleDesktop:0.18,radiusScaleMobile:0.15,centerYBias:0.76,branchJitterDeg:4.5,swayDeg:3} },
     { id:'prism', name:'棱镜风暴', desc:'高张力放射 · 强烈视觉冲击', color:'#a968ff', engine:'radial',
       shapes:['hexagon','triangle','square'],
       params:{depth:5,scale:0.42,branches:7,layerRot:24,spiral:0.24,spread:1.38,center:false,mirror:true,spin:0.32,pulse:0.05,hueShift:28}, layout:{branchJitterDeg:2} },
     { id:'tree', name:'分形树', desc:'经典分形 · 枝干递归 + 叶端组合', color:'#8eea7d', engine:'tree',
       shapes:['flower','circle','star5'],
-      params:{depth:7,scale:0.68,branches:2,layerRot:0,spiral:0.12,spread:1.05,center:false,mirror:false,spin:0,pulse:0.02,hueShift:10},
-      layout:{mode:'tree',maxBranches:3,arcDeg:52,directionDeg:-90,offsetXScale:1,offsetYScale:1,lift:0.4,swayDeg:8,radiusScaleDesktop:0.12,radiusScaleMobile:0.1,centerYBias:0.92,branchJitterDeg:3} },
+      params:{depth:7,scale:0.74,branches:2,layerRot:0,spiral:0.06,spread:1.12,center:false,mirror:false,spin:0,pulse:0.02,hueShift:10},
+      layout:{mode:'tree',maxBranches:3,arcDeg:28,directionDeg:-90,offsetXScale:1,offsetYScale:1,lift:0.4,swayDeg:6,radiusScaleDesktop:0.13,radiusScaleMobile:0.11,centerYBias:0.82,branchJitterDeg:1.6} },
     { id:'snowflake', name:'分形雪花', desc:'Koch 递归 · 冰晶边界更锋利', color:'#b4e7ff', engine:'koch',
       shapes:['hexagon','cross4','circle'],
-      params:{depth:5,scale:0.49,branches:0,layerRot:0,spiral:0.06,spread:1.0,center:false,mirror:false,spin:0.16,pulse:0.02,hueShift:10},
+      params:{depth:5,scale:0.49,branches:0,layerRot:0,spiral:0.04,spread:1.0,center:false,mirror:false,spin:0.12,pulse:0.02,hueShift:10},
       layout:{mode:'snowflake',maxBranches:6,branchFloor:6,arcDeg:360,directionDeg:-90,offsetXScale:1,offsetYScale:1,radiusScaleDesktop:0.31,radiusScaleMobile:0.24,centerYBias:0.52,alternateRotation:30,branchJitterDeg:1.5} },
     { id:'fern', name:'蕨类生长', desc:'IFS 迭代 · 生命感点云', color:'#6effa7', engine:'fern',
       shapes:['circle','flower'],
-      params:{depth:6,scale:0.55,branches:0,layerRot:0,spiral:0.0,spread:1.0,center:false,mirror:false,spin:0.0,pulse:0.0,hueShift:8}, layout:{centerYBias:0.56} },
+      params:{depth:6,scale:0.55,branches:0,layerRot:0,spiral:0.0,spread:1.0,center:false,mirror:false,spin:0.0,pulse:0.0,hueShift:8}, layout:{centerYBias:0.6} },
     { id:'phyllo', name:'斐波那契花盘', desc:'黄金角排布 · 花盘/种子涌现', color:'#ffba52', engine:'phyllotaxis',
       shapes:['circle','star5','flower'],
-      params:{depth:6,scale:0.42,branches:0,layerRot:0,spiral:0.18,spread:1.22,center:false,mirror:false,spin:0.12,pulse:0.02,hueShift:18}, layout:{centerYBias:0.54} }
+      params:{depth:6,scale:0.42,branches:0,layerRot:0,spiral:0.16,spread:1.18,center:false,mirror:false,spin:0.1,pulse:0.02,hueShift:18}, layout:{centerYBias:0.54} }
 ];
+
+const PRESET_GUIDES = {
+    nebula: {
+        subtitle: '适合做“第一眼吸引”的展项封面，容错高，颜色和形状输入都比较友好。',
+        character: '这是最适合做公共交互入口的预设。主体是径向扩散的能量云花，重点是“发光、层次、虹彩”，不是单一几何结构的辨识度。',
+        interaction: '适合开放观众改颜色、改 1 到 3 个基础图案、轻微调节旋转和色相偏移。它对输入包容度高，比较适合作为默认上手模式。',
+        params: [
+            '“色相偏移”和“主色相”决定整体气质，最容易快速出效果。',
+            '“层间旋转角”会直接改变旋涡感和法阵感。',
+            '“深度”提升后会明显更密，但超过 6 级后收益开始降低。'
+        ],
+        best: [
+            '建议用户最多选择 2 到 3 个图案，避免层次信息太碎。',
+            '主色相优先用冷青、蓝紫、粉紫，会更接近“宇宙能量体”。',
+            '如果用于公开互动，优先锁住复杂参数，只保留颜色和图案队列。'
+        ],
+        client: '这个预设最适合满足“观众输入图案和颜色”的客户期待，因为图案参与度中等、容错高。它证明“可控输入 + 强默认视觉”比完全开放所有参数更容易得到稳定好看的结果。'
+    },
+    mandala: {
+        subtitle: '适合强调对称、秩序和仪式感，视觉语言更偏“法阵 / 万花筒”。',
+        character: '它的魅力在高对称度和层间旋转形成的秩序感，适合做“数学图腾”类视觉，而不是有机生长类视觉。',
+        interaction: '适合让用户选择少量高辨识度图案，比如五角星、四芒星、圆形。用户选得越杂，法阵感越容易被破坏。',
+        params: [
+            '“层间旋转角”是核心控制项，决定法阵和万花筒的张力。',
+            '“交替镜像翻转”会明显增强对称感。',
+            '“中心子代”开启后会更像宗教纹章或徽记。'
+        ],
+        best: [
+            '建议限制用户最多选 2 个图案，且优先选星形或圆形。',
+            '高饱和粉紫、洋红、蓝紫最容易出“仪式感”。',
+            '不建议给用户开放太多形状组合，否则会从“法阵”变成“拼贴”。'
+        ],
+        client: '这个预设适合告诉客户：不是所有算法都适合“任意图案自由组合”。对称型算法更适合做“有限输入 + 强约束”，这样结果才稳定高级。'
+    },
+    coral: {
+        subtitle: '现在是枝状珊瑚群落，重点在有机生长和末端珊瑚虫节点，而不是平铺几何块。',
+        character: '它模拟的是从海床向上扩散的暖色枝状群落。主干和分叉提供“生长感”，末端的用户图案更像珊瑚虫、花苞或荧光触点。',
+        interaction: '适合把用户图案当作末端装饰，而不是主体骨架。这里图案参与度是中等偏浅的，如果让用户随便选太多图案，会破坏珊瑚的有机完整性。',
+        params: [
+            '“深度”决定枝状群落的复杂度，是珊瑚观感的第一控制项。',
+            '“分裂数覆写”会改变群落密度，但超过 3 后容易变脏。',
+            '“扩散半径比”和“螺旋因子”只适合小范围调，不适合完全放开给观众。'
+        ],
+        best: [
+            '建议用户最多选 1 到 2 个图案，优先圆形、花瓣、星形等柔和轮廓。',
+            '主色相更适合橙、珊瑚粉、暖红，不建议大面积荧光绿。',
+            '如果面向公众交互，建议把“颜色 + 图案”当输入，把枝干参数锁住。'
+        ],
+        client: '这是一个很典型的例子：客户要求“让观众自由输入任意图案”并不完全合理。珊瑚类算法更适合“用户输入做末端装饰，骨架由系统控制”，这样才能保持有机美感。'
+    },
+    prism: {
+        subtitle: '强调冲击、速度和棱角，适合做强对比的科技视觉。',
+        character: '这是高张力、强放射的棱镜爆发体，核心不是生长，而是冲击。画面的美感来自方向性和节奏，而不是细节拟真。',
+        interaction: '适合让用户少量参与图案选择，但不适合让用户大改结构。几何越硬朗，结果越稳定。',
+        params: [
+            '“分裂数覆写”决定是否有强烈爆炸感。',
+            '“层间旋转角”和“螺旋因子”决定速度感。',
+            '“扩散半径比”决定是压缩成核心，还是炸成外扩风暴。'
+        ],
+        best: [
+            '建议只保留三角形、六边形、正方形这类硬边几何。',
+            '高对比冷暖色更容易出“棱镜能量”效果。',
+            '适合短时体验，不适合信息量过多的深度自定义。'
+        ],
+        client: '这个预设适合说明：某些算法的价值在“强风格输出”，并不适合无限制输入。客户如果更重视高完成度画面，就应该接受部分参数被设计方预先收敛。'
+    },
+    tree: {
+        subtitle: '经典分形树骨架负责“像树”，用户图案只在叶端参与，避免破坏树体结构。',
+        character: '树的视觉核心是主干、分叉角和枝长衰减，所以这里故意没有让用户图案进入树干结构，而是只挂在叶端作为叶簇、果实或光点。',
+        interaction: '适合让观众改颜色和叶端图案，不适合让观众大范围控制树干结构。树体是经典分形算法的成果，叶端才是参与式创作的位置。',
+        params: [
+            '“深度”决定树冠复杂度，是最重要参数。',
+            '“基因收缩率”决定树枝衰减速度，影响真实感。',
+            '“分裂数覆写”只建议在 2 到 3 之间，过高会失去树感。'
+        ],
+        best: [
+            '建议只允许 1 到 3 个图案进入叶端组合，优先圆形、花瓣、星形。',
+            '绿色、金黄、橙红都能对应不同季节气质。',
+            '如果用于汇报，要明确：用户输入影响的是“叶冠装饰层”，不是树干数学骨架。'
+        ],
+        client: '这正好能回应客户原始要求的不合理部分。想要“树看起来像树”，骨架必须由算法主导；如果把树干也完全交给用户图案，会直接损失辨识度和美感。'
+    },
+    snowflake: {
+        subtitle: '这个预设本质上是参数驱动，不是图案驱动。好不好看主要取决于深度、颜色和旋转，不取决于用户选了多少图案。',
+        character: '雪花的高级感来自 Koch 分形边界和六向对称。图案在这里不是主体，只是晶核和边缘小结晶的点缀。如果把图案参与做深，雪花结构会立刻被破坏。',
+        interaction: '不建议把它设计成“观众自由选很多图案”的模式。这个预设更适合让观众调颜色、深度和一点点旋转，图案选择最多只是弱参与。',
+        params: [
+            '“深度”是决定雪花细节和锋利度的核心参数。',
+            '“主色相”会直接影响它是冰蓝、极光还是玻璃体质感。',
+            '“自转速度”只适合轻微开，不适合过快。'
+        ],
+        best: [
+            '用户图案建议只保留 1 个，最多 2 个，而且必须是圆形、四芒星、六边形这类冷感几何。',
+            '色彩上优先冷白、冰蓝、浅青，图案输入不要作为主卖点。',
+            '最合理的体验设计是“调颜色和深度”，不是“自由拼图案”。'
+        ],
+        client: '要直接和客户说明：这个预设里，图案选择作用不大，参数影响远大于图案影响。如果客户坚持强调“观众输入图案”，那这个预设不应该作为主交互案例，而应该作为高成品感展示案例。'
+    },
+    fern: {
+        subtitle: '这个预设也是参数主导，图案影响很浅。它主要靠 IFS 点云本身形成“像植物”的结构，不靠图案组合出效果。',
+        character: '蕨类的真实感来自点云密度、层级和整体轮廓。用户图案在这里更多只是叶片上的标记点，不能承担主体造型作用。',
+        interaction: '不适合做“观众随便选很多图案”的互动。图案一多，植物轮廓就会脏，蕨叶的辨识度会掉得很快。',
+        params: [
+            '“深度”会直接增加叶片丰富度。',
+            '“主色相”是影响观感最明显的输入项。',
+            '这类算法对“分裂数覆写”并不敏感，不建议作为主交互。'
+        ],
+        best: [
+            '建议只给用户开放颜色，图案最多开放 1 个，甚至可以完全不开放图案选择。',
+            '绿色、青绿、冷白会更自然；高饱和杂色通常只会让效果变差。',
+            '从体验角度看，这个预设更适合做“自动生成的数学植物”，不适合强调观众图案输入。'
+        ],
+        client: '这类预设要明确告诉客户：图案输入不是主要价值，参数和颜色才是主要价值。若客户坚持要“强图案参与”，蕨类不应该放在主流程里，因为它会明显拉低最终效果稳定性。'
+    },
+    phyllo: {
+        subtitle: '这是这几类里图案兼容度最高的一类，但它依然是参数决定骨架，图案只是增强“花心 / 花瓣”识别。',
+        character: '黄金角花盘天然适合做图案融入，所以用户会比雪花和蕨类更明显地感知到图案参与。但决定整体是否高级的，仍然是扩散、螺旋和颜色。',
+        interaction: '它可以承担“观众输入图案”的主案例，但也不适合无上限放开。图案太多时，花盘会从“有机秩序”变成“拼贴噪声”。',
+        params: [
+            '“扩散半径比”和“螺旋因子”对花盘观感影响最大。',
+            '“主色相”决定它是向日葵、星盘还是宇宙花。',
+            '“深度”影响种子数量，但不建议无限加大。'
+        ],
+        best: [
+            '支持 2 到 3 个图案混合，再多通常就开始变乱。',
+            '圆形、五角星、花瓣这类图案最适合，硬边几何会削弱花盘感。',
+            '如果客户一定要突出“图案输入”，优先推荐这个预设，而不是雪花或蕨类。'
+        ],
+        client: '要直接说清楚：斐波那契花盘是少数适合让观众明显输入图案的预设，但即便如此，真正决定成败的还是参数和默认构图，不是无限制增加图案自由度。'
+    }
+};
 
 // ══════════════════════════════════════════════════
 // 全局状态
@@ -944,6 +1246,7 @@ const state = {
     baseColor: '#7df1ff',
     activePreset: 'nebula',
     engine: 'radial',
+    dismissedGuidePresets: new Set(),
     params: { depth:5,scale:0.49,branches:0,layerRot:12,spiral:0.16,spread:1.12,center:false,mirror:false,spin:0.22,pulse:0.05,hueShift:14 },
     layout: { ...DEFAULT_STYLE }
 };
@@ -966,12 +1269,12 @@ const scene = {
 
 // ── 效果开关（默认全部关闭，用户可通过设置按钮打开对比）──
 const fx = {
-    glow: false,      // 辉光后处理（blur叠加）
-    nebula: false,     // 背景星云光球
-    stars: false,      // 背景星尘粒子
-    gradient: false,   // 分形节点渐变填充（关闭时用纯色）
-    stroke: false,     // 分形节点描边
-    frame: false       // 场景边框虚线
+    glow: true,       // 辉光后处理（blur叠加）
+    nebula: true,     // 背景星云光球
+    stars: true,      // 背景星尘粒子
+    gradient: true,   // 分形节点渐变填充
+    stroke: true,     // 分形节点描边
+    frame: false      // 场景边框虚线
 };
 
 function getEngine() {
@@ -1046,8 +1349,7 @@ function setup() {
     bindUI();
     renderQueue();
     renderPalette();
-    syncUIFromState();
-    refreshDerivedState(true);
+    applyPreset('nebula');
     bindSettings();
     fpsTracker.lastTime = performance.now();
 }
@@ -1213,9 +1515,11 @@ function renderFractalToBuffer(baseHue, budget, clockTime) {
     ctx.translate(cx, cy);
 
     if (engine === 'tree') {
-        const treeOffsetY = fbH * (state.layout.centerYBias - 0.5);
-        ctx.translate(0, treeOffsetY + initialRadius * 0.82);
-        renderFractalTree(ctx, 0, 0, initialRadius * 1.55, budget.effectiveDepth, state.params.scale, baseHue, 0, budget.qualityMode, clockTime);
+        // The main canvas already places the whole buffer using centerYBias.
+        // Keep the tree root near the buffer center so it stays inside the viewport.
+        renderFractalTree(ctx, 0, 0, initialRadius * 1.7, budget.effectiveDepth, state.params.scale, baseHue, 0, budget.qualityMode, clockTime);
+    } else if (engine === 'coral') {
+        renderCoralColony(ctx, initialRadius * 1.12, budget.effectiveDepth, baseHue, budget.qualityMode, clockTime);
     } else if (engine === 'koch') {
         renderKochSnowflake(ctx, initialRadius * 1.05, budget.effectiveDepth, baseHue, budget.qualityMode, clockTime);
     } else if (engine === 'fern') {
@@ -1325,85 +1629,91 @@ function renderFractalTree(ctx, x, y, trunkLen, depthRemaining, scaleFactor, bas
     const layoutCfg = state.layout;
     const maxDepth = Math.max(1, state.params.depth);
     const progress = 1 - (depthRemaining / maxDepth);
-
-    const depthAlpha = depthRemaining < 1 ? depthRemaining : 1;
-    const thickness = Math.max(1, trunkLen * 0.12) * depthAlpha;
-    const trunkHue = (32 + progress * ((baseHue + 360 - 32) % 360)) % 360;
-    const trunkSat = 36 + progress * 38;
-    const trunkBri = 22 + progress * 34;
-
-    // 微风
+    const depthAlpha = Math.min(1, Math.max(0, depthRemaining));
+    const thickness = Math.max(1, trunkLen * (layer === 0 ? 0.11 : 0.095)) * depthAlpha;
+    const trunkHue = (28 + progress * 24) % 360;
+    const trunkSat = 28 + progress * 16;
+    const trunkBri = 18 + progress * 22;
+    const baseAngleDeg = (layoutCfg.arcDeg || 34) * (0.72 + state.params.spread * 0.25);
+    const baseAngle = baseAngleDeg * Math.PI / 180;
     const swayAmt = (layoutCfg.swayDeg || 6) * Math.PI / 180;
-    const sway = Math.sin(clockTime * 0.45 + layer * 0.7 + x * 0.003) * swayAmt * Math.min(1, layer*0.25+0.15);
+    const sway = Math.sin(clockTime * 0.42 + layer * 0.58 + x * 0.0025) * swayAmt * Math.min(1, layer * 0.22 + 0.18);
+    const lean = state.params.spiral * 0.16;
+    const branchCount = Math.max(2, Math.min(state.params.branches > 0 ? state.params.branches : 2, layoutCfg.maxBranches || 3));
+    const isTerminal = depthRemaining <= 1.1 || trunkLen < 12;
 
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(sway);
+    ctx.rotate(sway + lean);
 
     const endY = -trunkLen;
+    const curveX = Math.sin(clockTime * 0.3 + layer * 0.35) * trunkLen * 0.04 + lean * trunkLen * 0.55;
+    const curveY = -trunkLen * 0.52;
 
-    // 枝干（双层描边：暗层 + 高光，增强立体感）
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(0, endY);
-    ctx.strokeStyle = hsbToRgbaFast(trunkHue, trunkSat, trunkBri, 0.82 * depthAlpha);
+    ctx.quadraticCurveTo(curveX, curveY, 0, endY);
+    ctx.strokeStyle = hsbToRgbaFast(trunkHue, trunkSat, trunkBri, 0.9 * depthAlpha);
     ctx.lineWidth = thickness;
     ctx.stroke();
 
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(0, endY);
-    ctx.strokeStyle = hsbToRgbaFast((trunkHue + 10) % 360, trunkSat * 0.55, Math.min(100, trunkBri + 26), 0.28 * depthAlpha);
-    ctx.lineWidth = Math.max(0.6, thickness * 0.35);
+    ctx.quadraticCurveTo(curveX * 0.55, curveY * 0.9, 0, endY);
+    ctx.strokeStyle = hsbToRgbaFast((trunkHue + 8) % 360, trunkSat * 0.45, Math.min(100, trunkBri + 18), 0.22 * depthAlpha);
+    ctx.lineWidth = Math.max(0.55, thickness * 0.34);
     ctx.stroke();
 
     ctx.translate(0, endY);
 
-    // 叶子层
-    const isLeafLayer = depthRemaining <= 1.5;
-    if (isLeafLayer && depthRemaining > 0) {
-        const leafSize = Math.max(2, trunkLen * scaleFactor * 0.62);
+    if (isTerminal) {
+        const leafSize = Math.max(2.2, trunkLen * scaleFactor * 0.68);
         const leafHue = (baseHue + layer * state.params.hueShift + 360) % 360;
-        const leafBri = Math.min(98, 55 + layer * 5);
-        const leafAlpha = Math.min(1, depthRemaining) * 0.88;
+        const leafBri = Math.min(98, 54 + layer * 4.5);
+        const leafAlpha = depthAlpha * 0.9;
         drawLeafCluster(ctx, leafSize, leafHue, leafBri, leafAlpha, layer, qualityMode, clockTime);
+        ctx.restore();
+        return;
     }
 
-    // 分支
-    if (depthRemaining > 0.3) {
-        const actualBranches = Math.max(2, Math.min(state.params.branches > 0 ? state.params.branches : 2, layoutCfg.maxBranches || 3));
-        const childLen = trunkLen * scaleFactor;
-        const nextDepth = depthRemaining - 1;
-        const arcDeg = (layoutCfg.arcDeg || 52) * (0.72 + state.params.spread * 0.28);
-        const arcHalf = (arcDeg / 2) * Math.PI / 180;
-        const twist = state.params.spiral * 0.18;
+    const nextDepth = depthRemaining - 1;
+    const childLen = trunkLen * (scaleFactor * 0.96);
+    const asymmetry = Math.sin(clockTime * 0.27 + layer * 0.38) * 0.06;
+    const jitterBase = (layoutCfg.branchJitterDeg || 2) * Math.PI / 180;
+    const angles = [];
 
-        for (let i = 0; i < actualBranches; i++) {
-            let brAngle;
-            if (actualBranches === 1) brAngle = 0;
-            else brAngle = -arcHalf + (i/(actualBranches-1)) * arcHalf * 2;
-
-            const jitter = Math.sin(clockTime*0.8 + layer*0.7 + i*1.9) * ((layoutCfg.branchJitterDeg||3)*Math.PI/180);
-            brAngle += jitter;
-            brAngle += twist * (layer * 0.55 + i * 0.3);
-            const spiralMod = 1 + state.params.spiral * 0.08 * (i%2===0 ? 1 : -1);
-
-            ctx.save();
-            ctx.rotate(brAngle);
-            renderFractalTree(ctx, 0, 0, childLen*spiralMod, nextDepth, scaleFactor, baseHue, layer+1, qualityMode, clockTime);
-            ctx.restore();
-        }
-
-        if (state.params.center) {
-            renderFractalTree(ctx, 0, 0, childLen*0.85, nextDepth, scaleFactor, baseHue, layer+1, qualityMode, clockTime);
-        }
+    if (branchCount === 2) {
+        angles.push(-(baseAngle + asymmetry));
+        angles.push(baseAngle - asymmetry * 0.7);
+    } else {
+        angles.push(-(baseAngle + asymmetry));
+        angles.push(-0.08 + lean * 0.45);
+        angles.push(baseAngle - asymmetry * 0.7);
     }
+
+    for (let i = 0; i < angles.length; i++) {
+        const jitter = Math.sin(clockTime * 0.7 + layer * 0.6 + i * 2.1) * jitterBase;
+        const angle = angles[i] + jitter;
+        const lenScale = i === 1 && angles.length === 3 ? 0.9 : (i === 0 ? 1.02 : 0.94);
+        ctx.save();
+        ctx.rotate(angle);
+        renderFractalTree(ctx, 0, 0, childLen * lenScale, nextDepth, scaleFactor, baseHue, layer + 1, qualityMode, clockTime);
+        ctx.restore();
+    }
+
+    if (state.params.center && layer < 3) {
+        ctx.save();
+        ctx.rotate(lean * 0.55);
+        renderFractalTree(ctx, 0, 0, childLen * 0.82, nextDepth - 0.15, scaleFactor, baseHue, layer + 1, qualityMode, clockTime);
+        ctx.restore();
+    }
+
     ctx.restore();
 }
 
 function drawLeafCluster(ctx, baseSize, hueValue, brightness, alpha, layer, qualityMode, clockTime) {
-    const count = qualityMode === 'protected' ? 2 : 4;
+    const count = qualityMode === 'protected' ? 3 : 5;
     const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
 
     ctx.save();
@@ -1411,10 +1721,10 @@ function drawLeafCluster(ctx, baseSize, hueValue, brightness, alpha, layer, qual
 
     for (let i = 0; i < count; i++) {
         const s = shapes[(layer + i) % shapes.length];
-        const spin = (clockTime * 0.6 + layer * 0.18 + i * 1.1) * (state.params.spiral * 0.35 + 0.22);
-        const r = baseSize * (0.32 + i * 0.12);
-        const dx = Math.cos(spin) * baseSize * (0.14 + i * 0.05);
-        const dy = Math.sin(spin) * baseSize * (0.12 + i * 0.04);
+        const spin = (clockTime * 0.45 + layer * 0.14 + i * 1.25) * (state.params.spiral * 0.25 + 0.18);
+        const r = baseSize * (i === 0 ? 0.48 : 0.28 + i * 0.1);
+        const dx = Math.cos(spin) * baseSize * (i === 0 ? 0.08 : 0.18 + i * 0.06);
+        const dy = Math.sin(spin) * baseSize * (i === 0 ? 0.06 : 0.16 + i * 0.05) - (i === 0 ? baseSize * 0.04 : 0);
 
         ctx.save();
         ctx.translate(dx, dy);
@@ -1432,7 +1742,194 @@ function drawLeafCluster(ctx, baseSize, hueValue, brightness, alpha, layer, qual
         ctx.restore();
     }
 
+    // one soft fruit/light seed at the tip to make the crown feel intentional
+    ctx.beginPath();
+    ctx.fillStyle = hsbToRgbaFast((hueValue + 28) % 360, 32, Math.min(100, brightness + 22), alpha * 0.22);
+    ctx.arc(0, -baseSize * 0.08, Math.max(1.2, baseSize * 0.16), 0, Math.PI * 2);
+    ctx.fill();
+
     ctx.restore();
+}
+
+function renderCoralColony(ctx, radius, depthValue, baseHue, qualityMode, clockTime) {
+    const stems = qualityMode === 'protected' ? 4 : 6;
+    const depth = Math.max(2, Math.round(depthValue));
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (let i = 0; i < stems; i++) {
+        const spread = stems === 1 ? 0 : mapRange(i, 0, stems - 1, -1, 1);
+        const rootX = spread * radius * 0.34;
+        const rootY = radius * 0.5 + Math.abs(spread) * radius * 0.08;
+        const len = radius * (0.58 - Math.abs(spread) * 0.08);
+        const angle = -Math.PI / 2 + spread * 0.34 + Math.sin(clockTime * 0.22 + i) * 0.05;
+        renderCoralBranch(ctx, rootX, rootY, len, angle, depth, baseHue, 0, qualityMode, clockTime, shapes);
+    }
+
+    // seabed glow
+    const bed = ctx.createRadialGradient(0, radius * 0.56, radius * 0.08, 0, radius * 0.56, radius * 0.46);
+    bed.addColorStop(0, hsbToRgbaFast((baseHue + 8) % 360, 52, 88, 0.12));
+    bed.addColorStop(1, hsbToRgbaFast((baseHue + 24) % 360, 48, 20, 0));
+    ctx.fillStyle = bed;
+    ctx.fillRect(-radius, radius * 0.15, radius * 2, radius);
+    ctx.restore();
+}
+
+function renderCoralBranch(ctx, x, y, len, angle, depthRemaining, baseHue, layer, qualityMode, clockTime, shapes) {
+    if (depthRemaining <= 0 || len < 8) {
+        drawCoralPolyp(ctx, x, y, Math.max(2, len * 0.18), baseHue, layer, qualityMode, clockTime, shapes);
+        return;
+    }
+
+    const growth = 1 - depthRemaining / Math.max(1, state.params.depth);
+    const thickness = Math.max(1, len * (layer === 0 ? 0.1 : 0.075));
+    const hueValue = (baseHue + growth * 20 + layer * 5) % 360;
+    const brightness = 42 + growth * 22;
+    const bend = Math.sin(clockTime * 0.35 + x * 0.002 + layer * 0.6) * 0.12;
+    const endX = x + Math.cos(angle) * len;
+    const endY = y + Math.sin(angle) * len;
+    const ctrlX = x + Math.cos(angle + bend) * len * 0.48;
+    const ctrlY = y + Math.sin(angle + bend) * len * 0.48;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+    ctx.strokeStyle = hsbToRgbaFast(hueValue, 58, brightness, 0.88);
+    ctx.lineWidth = thickness;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+    ctx.strokeStyle = hsbToRgbaFast((hueValue + 14) % 360, 34, Math.min(100, brightness + 18), 0.2);
+    ctx.lineWidth = Math.max(0.5, thickness * 0.32);
+    ctx.stroke();
+
+    if (depthRemaining <= 1) {
+        drawCoralPolyp(ctx, endX, endY, Math.max(2.4, len * 0.16), baseHue, layer, qualityMode, clockTime, shapes);
+        return;
+    }
+
+    const branchCount = qualityMode === 'protected' ? 2 : Math.min(3, Math.max(2, state.params.branches || 3));
+    const baseArc = ((state.layout.arcDeg || 44) * Math.PI) / 180;
+
+    for (let i = 0; i < branchCount; i++) {
+        const spread = branchCount === 1 ? 0 : mapRange(i, 0, branchCount - 1, -0.5, 0.5);
+        const nextAngle = angle + spread * baseArc + Math.sin(clockTime * 0.6 + layer + i) * 0.08 + state.params.spiral * 0.18 * spread;
+        const nextLen = len * (state.params.scale * (i === 1 && branchCount === 3 ? 0.84 : 0.92));
+        renderCoralBranch(ctx, endX, endY, nextLen, nextAngle, depthRemaining - 1, baseHue, layer + 1, qualityMode, clockTime, shapes);
+    }
+}
+
+function drawCoralPolyp(ctx, x, y, size, baseHue, layer, qualityMode, clockTime, shapes) {
+    const count = qualityMode === 'protected' ? 3 : 5;
+    const coreHue = (baseHue + 26 + layer * 8) % 360;
+
+    for (let i = 0; i < count; i++) {
+        const angle = -Math.PI / 2 + i * (Math.PI * 2 / count) + clockTime * 0.08;
+        const shape = shapes[(layer + i) % shapes.length];
+        drawShapeStamp(
+            ctx,
+            shape,
+            x + Math.cos(angle) * size * 0.75,
+            y + Math.sin(angle) * size * 0.75,
+            size * (i === 0 ? 0.85 : 0.58),
+            (coreHue + i * 10) % 360,
+            90,
+            qualityMode === 'protected' ? 0.28 : 0.42,
+            angle * 0.8
+        );
+    }
+
+    ctx.beginPath();
+    ctx.fillStyle = hsbToRgbaFast((coreHue + 18) % 360, 34, 100, 0.32);
+    ctx.arc(x, y, Math.max(1.2, size * 0.32), 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawShapeStamp(ctx, shape, x, y, size, hueValue, brightness, alpha, rotation = 0, strokeAlpha = 0.16) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+    ctx.fillStyle = fx.gradient
+        ? createGradientFast(ctx, size, hueValue, brightness, alpha)
+        : hsbToRgbaFast(hueValue, 62, Math.min(100, brightness + 8), alpha);
+    traceShapePath(ctx, shape, size);
+    ctx.fill();
+    if (fx.stroke && size > 2.8) {
+        ctx.strokeStyle = hsbToRgbaFast((hueValue + 18) % 360, 38, Math.min(100, brightness + 18), alpha * strokeAlpha);
+        ctx.lineWidth = Math.max(0.32, size * 0.05);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawShapeRing(ctx, shapes, ringRadius, count, size, hueValue, brightness, alpha, rotationOffset = 0) {
+    for (let i = 0; i < count; i++) {
+        const angle = rotationOffset + i * (Math.PI * 2 / count);
+        const shape = shapes[i % shapes.length];
+        drawShapeStamp(
+            ctx,
+            shape,
+            Math.cos(angle) * ringRadius,
+            Math.sin(angle) * ringRadius,
+            size,
+            (hueValue + i * 8) % 360,
+            brightness,
+            alpha,
+            angle
+        );
+    }
+}
+
+function populateGuideModal(presetId) {
+    const preset = PRESETS.find(item => item.id === presetId);
+    const guide = PRESET_GUIDES[presetId];
+    if (!preset || !guide) return;
+
+    document.getElementById('guide-title').textContent = preset.name;
+    document.getElementById('guide-subtitle').textContent = guide.subtitle;
+    document.getElementById('guide-character').textContent = guide.character;
+    document.getElementById('guide-interaction').textContent = guide.interaction;
+    document.getElementById('guide-client').textContent = guide.client;
+
+    const paramsList = document.getElementById('guide-params');
+    paramsList.innerHTML = '';
+    guide.params.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        paramsList.appendChild(li);
+    });
+
+    const bestList = document.getElementById('guide-best');
+    bestList.innerHTML = '';
+    guide.best.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        bestList.appendChild(li);
+    });
+}
+
+function openGuideModal(presetId = state.activePreset) {
+    if (!presetId || !PRESET_GUIDES[presetId]) return;
+    populateGuideModal(presetId);
+    const modal = document.getElementById('guide-modal');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.getElementById('guide-btn').classList.add('active');
+}
+
+function closeGuideModal(markDismissed = true) {
+    const modal = document.getElementById('guide-modal');
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.getElementById('guide-btn').classList.remove('active');
+    if (markDismissed && state.activePreset) {
+        state.dismissedGuidePresets.add(state.activePreset);
+    }
 }
 
 // ══════════════════════════════════════════════════
@@ -1466,22 +1963,18 @@ function renderKochSnowflake(ctx, radius, depthValue, baseHue, qualityMode, cloc
     ctx.lineWidth = 0.7;
     ctx.stroke();
 
+    // 中心图案核，保留冰晶感但让用户图案更参与
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
+    drawShapeStamp(ctx, shapes[0], 0, 0, Math.max(4, radius * 0.08), (hueValue + 12) % 360, 98, 0.52, clockTime * 0.22);
+    drawShapeRing(ctx, shapes, radius * 0.2, Math.min(6, shapes.length * 2), Math.max(2, radius * 0.028), (hueValue + 24) % 360, 92, 0.34, clockTime * 0.1);
+
     // 点状结晶（沿边采样少量点，避免过密）
     const stampEvery = depth >= 6 ? 24 : depth >= 5 ? 18 : 12;
-    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
     for (let i = 0; i < points.length; i += stampEvery) {
         const p = points[i];
         const s = shapes[(i / stampEvery) % shapes.length | 0];
         const r = Math.max(1.2, radius * 0.018) * (0.9 + Math.sin(clockTime * 0.7 + i * 0.04) * 0.25);
-        ctx.save();
-        ctx.translate(p.x * radius, p.y * radius);
-        ctx.rotate(clockTime * 0.25 + i * 0.02);
-        ctx.fillStyle = fx.gradient
-            ? createGradientFast(ctx, r * 1.05, (hueValue + i * 0.02) % 360, 98, 0.7)
-            : hsbToRgbaFast((hueValue + i * 0.02) % 360, 30, 100, 0.65);
-        traceShapePath(ctx, s, r);
-        ctx.fill();
-        ctx.restore();
+        drawShapeStamp(ctx, s, p.x * radius, p.y * radius, r, (hueValue + i * 0.02) % 360, 98, 0.64, clockTime * 0.25 + i * 0.02);
     }
 
     ctx.restore();
@@ -1544,6 +2037,8 @@ function renderBarnsleyFern(ctx, radius, depthValue, baseHue, qualityMode) {
 
     const hueValue = (baseHue + 110) % 360;
     ctx.fillStyle = hsbToRgbaFast(hueValue, 52, 92, qualityMode === 'protected' ? 0.35 : 0.45);
+    const samples = [];
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
 
     for (let i = 0; i < points + 30; i++) {
         const r = rnd();
@@ -1568,6 +2063,9 @@ function renderBarnsleyFern(ctx, radius, depthValue, baseHue, qualityMode) {
         const px = ox + x * sx;
         const py = oy - y * sy;
         ctx.fillRect(px, py, 1, 1);
+        if (i % Math.max(180, Math.floor(points / 22)) === 0) {
+            samples.push({ x: px, y: py, index: i });
+        }
     }
 
     // highlight speckles
@@ -1578,6 +2076,41 @@ function renderBarnsleyFern(ctx, radius, depthValue, baseHue, qualityMode) {
             const py = (rnd() - 0.7) * radius * 0.9;
             ctx.fillRect(px, py, 1, 1);
         }
+    }
+
+    // 将用户图案挂到部分叶片节点上，但仍然保留蕨类的点云主体
+    for (let i = 0; i < samples.length; i++) {
+        const sample = samples[i];
+        const t = i / Math.max(1, samples.length - 1);
+        const shape = shapes[i % shapes.length];
+        const size = Math.max(1.6, radius * (0.012 + t * 0.012));
+        drawShapeStamp(
+            ctx,
+            shape,
+            sample.x,
+            sample.y,
+            size,
+            (hueValue + t * 34) % 360,
+            86 + t * 10,
+            qualityMode === 'protected' ? 0.14 : 0.22,
+            t * 1.8
+        );
+    }
+
+    // 顶部小冠芽
+    for (let i = 0; i < Math.min(5, shapes.length + 2); i++) {
+        const angle = -Math.PI / 2 + i * (Math.PI / Math.max(2, shapes.length + 1));
+        drawShapeStamp(
+            ctx,
+            shapes[i % shapes.length],
+            Math.cos(angle) * radius * 0.08,
+            -radius * 0.78 + Math.sin(angle) * radius * 0.06,
+            Math.max(1.6, radius * 0.018),
+            (hueValue + 20 + i * 8) % 360,
+            96,
+            0.18,
+            angle
+        );
     }
 
     ctx.restore();
@@ -1610,23 +2143,19 @@ function renderPhyllotaxis(ctx, radius, depthValue, baseHue, qualityMode, clockT
         const bri = 40 + t * 58;
         const alpha = qualityMode === 'protected' ? 0.22 : 0.28;
 
-        if (i % 55 === 0 && qualityMode !== 'protected') {
-            const s = shapes[(i / 55) % shapes.length | 0];
+        if (i % 34 === 0 && qualityMode !== 'protected') {
+            const s = shapes[(i / 34) % shapes.length | 0];
             const r = Math.max(1.4, radius * 0.013) * (0.9 + rnd() * 0.5);
-            ctx.save();
-            ctx.translate(px, py);
-            ctx.rotate(a + i * 0.01);
-            ctx.fillStyle = fx.gradient
-                ? createGradientFast(ctx, r * 1.05, (hueValue + t * 80) % 360, Math.min(100, bri + 12), 0.55)
-                : hsbToRgbaFast((hueValue + t * 80) % 360, 56, Math.min(100, bri + 10), 0.5);
-            traceShapePath(ctx, s, r);
-            ctx.fill();
-            ctx.restore();
+            drawShapeStamp(ctx, s, px, py, r, (hueValue + t * 80) % 360, Math.min(100, bri + 12), 0.55, a + i * 0.01);
         } else {
             ctx.fillStyle = hsbToRgbaFast((hueValue + t * 90) % 360, 46, Math.min(100, bri + 10), alpha);
             ctx.fillRect(px, py, 1, 1);
         }
     }
+
+    // 中心花心与外环花瓣，用来强化“用户图案参与构图”的感知
+    drawShapeStamp(ctx, shapes[0], 0, 0, Math.max(3.8, radius * 0.06), (hueValue + 18) % 360, 98, 0.5, clockTime * 0.2);
+    drawShapeRing(ctx, shapes, radius * 0.14, Math.min(8, shapes.length * 2 + 2), Math.max(2.2, radius * 0.024), (hueValue + 30) % 360, 94, 0.26, clockTime * 0.08);
 
     ctx.restore();
 }
@@ -1783,9 +2312,9 @@ function computeRenderBudget() {
     let noteClass = '';
 
     // thresholds tuned per engine to avoid "looks the same but slower" situations
-    const warnAt = engine === 'koch' ? 12000 : engine === 'fern' ? 15000 : engine === 'phyllotaxis' ? 5500 : engine === 'tree' ? 9000 : 14000;
-    const dangerAt = engine === 'koch' ? 26000 : engine === 'fern' ? 22000 : engine === 'phyllotaxis' ? 8000 : engine === 'tree' ? 20000 : 32000;
-    const hardCap = engine === 'koch' ? 32000 : engine === 'fern' ? 26000 : engine === 'phyllotaxis' ? 9000 : engine === 'tree' ? 32000 : 50000;
+    const warnAt = engine === 'koch' ? 12000 : engine === 'fern' ? 15000 : engine === 'phyllotaxis' ? 5500 : engine === 'tree' ? 9000 : engine === 'coral' ? 11000 : 14000;
+    const dangerAt = engine === 'koch' ? 26000 : engine === 'fern' ? 22000 : engine === 'phyllotaxis' ? 8000 : engine === 'tree' ? 20000 : engine === 'coral' ? 22000 : 32000;
+    const hardCap = engine === 'koch' ? 32000 : engine === 'fern' ? 26000 : engine === 'phyllotaxis' ? 9000 : engine === 'tree' ? 32000 : engine === 'coral' ? 30000 : 50000;
 
     if (estimate > warnAt) {
         qualityMode = 'balanced';
@@ -1801,7 +2330,7 @@ function computeRenderBudget() {
     }
 
     // auto-reduce depth to stay under hard cap for recursive engines
-    if (engine === 'radial' || engine === 'tree') {
+    if (engine === 'radial' || engine === 'tree' || engine === 'coral') {
         while (estimateNodes(effectiveDepth, branchFactor) > hardCap && effectiveDepth > 1) effectiveDepth -= 0.5;
     } else if (engine === 'koch') {
         while (Math.round(3 * Math.pow(4, Math.max(0, Math.round(effectiveDepth)))) > hardCap && effectiveDepth > 1) effectiveDepth -= 1;
@@ -1857,6 +2386,9 @@ function computeDynamicLimits() {
     if (engine === 'tree' || state.layout.mode === 'tree') {
         dm = 9;
         bm = Math.min(bm, state.layout.maxBranches || 3);
+    } else if (engine === 'coral') {
+        dm = 7;
+        bm = Math.min(bm, 4);
     } else if (engine === 'koch') {
         dm = 6;
     } else if (engine === 'fern') {
@@ -1941,6 +2473,14 @@ function bindUI() {
     });
     bindToggle('t-center','center');
     bindToggle('t-mirror','mirror');
+    document.getElementById('guide-btn').addEventListener('click', () => openGuideModal());
+    document.getElementById('guide-close').addEventListener('click', () => closeGuideModal());
+    document.getElementById('guide-modal').addEventListener('click', event => {
+        if (event.target.id === 'guide-modal') closeGuideModal();
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeGuideModal(false);
+    });
     document.querySelectorAll('.shape-btn').forEach(btn => {
         btn.addEventListener('click', ()=>{
             const s = btn.dataset.shape;
@@ -1994,6 +2534,8 @@ function applyPreset(id) {
     state.engine = p.engine || ((p.layout && p.layout.mode === 'tree') ? 'tree' : 'radial');
     state.params={...p.params}; state.layout={...DEFAULT_STYLE,...(p.layout||{})};
     syncUIFromState(); renderQueue(); refreshDerivedState(true);
+    if (!state.dismissedGuidePresets.has(id)) openGuideModal(id);
+    else populateGuideModal(id);
 }
 function syncUIFromState() {
     syncParameterControls();
