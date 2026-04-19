@@ -2,3 +2,5 @@
 output/
 .DS_Store
 *.swp
+.wrangler/
+legacy_backup_20260417/output 2/

@@ -1,32 +1,1132 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="refresh" content="0; url=./fractal_demo.html" />
-    <title>Fractal Museum Demo</title>
-    <meta name="robots" content="noindex" />
-    <style>
-      html, body { height: 100%; }
-      body {
-        margin: 0;
-        display: grid;
-        place-items: center;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-        background: #0b0e14;
-        color: rgba(255,255,255,0.82);
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>科技馆数学图形实验室</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308142a'/%3E%3Cpath d='M18 42h28M22 42V22h20v20' stroke='%237dd3fc' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M32 22v-8M32 14l8 8M32 14l-8 8' stroke='%23fde68a' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --bg: #060814;
+      --panel: #0f1733;
+      --text: #e8f0ff;
+      --muted: #b6c4ff;
+      --accent: #7dd3fc;
+      --accent-2: #e879f9;
+      --line: #263153;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(100% 100% at 50% 0%, #0f1a3b 0%, var(--bg) 45%, #03050c 100%);
+      color: var(--text);
+      font-family: "Trebuchet MS", "Arial", "Hiragino Sans GB", "PingFang SC", sans-serif;
+    }
+
+    .shell {
+      min-height: 100%;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 18px;
+      padding: 16px;
+    }
+
+    @media (max-width: 1024px) {
+      .shell {
+        grid-template-columns: 1fr;
       }
-      a { color: #7df1ff; }
-      .wrap { text-align: center; padding: 24px; }
-      .hint { opacity: 0.8; font-size: 14px; line-height: 1.5; }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <div class="hint">
-        正在跳转到演示页面。如果没有自动跳转，请点击
-        <a href="./fractal_demo.html">fractal_demo.html</a>。
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(13, 23, 56, 0.95), rgba(6, 10, 26, 0.9));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 20px 45px rgba(0, 0, 0, 0.45);
+      overflow: auto;
+      max-height: calc(100vh - 32px);
+    }
+
+    .title {
+      margin: 0 0 10px;
+      font-size: 22px;
+      letter-spacing: 0.5px;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      margin-top: 0;
+      margin-bottom: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .control {
+      margin-bottom: 14px;
+    }
+
+    .control label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    select,
+    button,
+    input[type="range"] {
+      width: 100%;
+      border: 1px solid #38527d;
+      background: #0c1533;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      outline: none;
+      font-size: 14px;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .range-value {
+      min-width: 42px;
+      text-align: right;
+      color: #fefefe;
+      font-size: 13px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      background: linear-gradient(160deg, #1f3b78, #2f1b66);
+      border: 1px solid #5a78ce;
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    button:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .canvas-wrap {
+      background: linear-gradient(160deg, #08102a 0%, #030611 70%);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #fractalCanvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 14px;
+      image-rendering: crisp-edges;
+    }
+
+    .hint {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      background: rgba(5, 10, 27, 0.6);
+      border: 1px solid #2d4a80;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #c9d7ff;
+      font-size: 12px;
+      max-width: 300px;
+      line-height: 1.45;
+    }
+
+    .tag {
+      display: inline-block;
+      background: rgba(113, 170, 255, 0.2);
+      color: #c7dbff;
+      border: 1px solid #4b77d1;
+      border-radius: 999px;
+      font-size: 11px;
+      padding: 3px 8px;
+      margin: 2px 4px 0 0;
+    }
+
+    .tags {
+      margin-top: 8px;
+    }
+
+    .status {
+      margin-top: 12px;
+      color: #98d8ff;
+      font-size: 12px;
+      min-height: 18px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="panel">
+      <h1 class="title">科技馆数学图形实验室</h1>
+      <p class="subtitle">把简单几何与数学规则组合起来：递归、步进、滚动、准晶、数论与空间划分都能长出很有美感的图案。先选图案，再调参数看它如何变化。</p>
+
+      <div class="control">
+        <label for="pattern">图案</label>
+        <select id="pattern">
+          <option value="tree">分形树（正方形递归）</option>
+          <option value="koch">Koch 雪花</option>
+          <option value="sierpinski">谢尔宾斯基三角</option>
+          <option value="phyllotaxis">葵花螺旋</option>
+          <option value="hypotrochoid">Spirograph 滚轮曲线</option>
+          <option value="penrose">Penrose 准晶</option>
+        </select>
       </div>
-    </div>
-  </body>
+
+      <div class="control">
+        <label for="iterations">迭代层数 <span id="iterationsValue" class="range-value"></span></label>
+        <input type="range" id="iterations" min="1" max="12" value="6" />
+      </div>
+
+      <div class="control">
+        <label for="branchAngle"><span id="branchAngleLabel">角度 / 步长</span> <span id="branchAngleValue" class="range-value"></span></label>
+        <input type="range" id="branchAngle" min="12" max="180" value="30" />
+      </div>
+
+      <div class="control">
+        <label for="scaleFactor"><span id="scaleFactorLabel">尺度 / 密度</span> <span id="scaleFactorValue" class="range-value"></span></label>
+        <input type="range" id="scaleFactor" min="55" max="85" value="68" />
+      </div>
+
+      <div class="control">
+        <label for="lineWidth">线条粗细 <span id="lineWidthValue" class="range-value"></span></label>
+        <input type="range" id="lineWidth" min="0.6" max="4" step="0.2" value="1.6" />
+      </div>
+
+      <div class="control">
+        <label for="palette">颜色风格</label>
+        <select id="palette">
+          <option value="cool">夜景冷光</option>
+          <option value="neon">霓虹</option>
+          <option value="warm">暖金</option>
+          <option value="mono">极简白蓝</option>
+          <option value="cosmic">宇宙极光</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="playDelay">逐层播放速度（ms） <span id="playDelayValue" class="range-value"></span></label>
+        <input type="range" id="playDelay" min="100" max="1300" step="50" value="600" />
+      </div>
+
+      <div class="actions">
+        <button id="renderBtn">立即渲染</button>
+        <button id="playBtn">逐层播放</button>
+        <button id="randomBtn">随机参数</button>
+      </div>
+
+      <p class="status" id="status"></p>
+
+      <div class="tags">
+        <span class="tag">经典递归</span>
+        <span class="tag">参数化</span>
+        <span class="tag">曲线与铺砌</span>
+        <span class="tag">数论与准晶</span>
+        <span class="tag">适合教学演示</span>
+      </div>
+    </aside>
+
+    <main class="canvas-wrap">
+      <canvas id="fractalCanvas" aria-label="fractals"></canvas>
+      <div class="hint">
+        小提示：
+        <br />• 科普展可把“迭代层数”做成自动演示节奏。
+        <br />• 葵花螺旋和 Spirograph 更适合先吸引观众停下来。
+        <br />• Penrose 很适合边讲规则边演示。
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('fractalCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+
+    const patternEl = document.getElementById('pattern');
+    const iterationsEl = document.getElementById('iterations');
+    const branchAngleEl = document.getElementById('branchAngle');
+    const scaleFactorEl = document.getElementById('scaleFactor');
+    const lineWidthEl = document.getElementById('lineWidth');
+    const paletteEl = document.getElementById('palette');
+    const playDelayEl = document.getElementById('playDelay');
+    const playDelayValue = document.getElementById('playDelayValue');
+
+    const iterationsValue = document.getElementById('iterationsValue');
+    const branchAngleLabel = document.getElementById('branchAngleLabel');
+    const branchAngleValue = document.getElementById('branchAngleValue');
+    const scaleFactorLabel = document.getElementById('scaleFactorLabel');
+    const scaleFactorValue = document.getElementById('scaleFactorValue');
+    const lineWidthValue = document.getElementById('lineWidthValue');
+
+    const status = document.getElementById('status');
+    const renderBtn = document.getElementById('renderBtn');
+    const playBtn = document.getElementById('playBtn');
+    const randomBtn = document.getElementById('randomBtn');
+
+    let playing = false;
+    let playTimer = null;
+    let renderFrame = 0;
+    let pendingDepth = null;
+    let lastRenderKey = '';
+    let canvasDpr = 1;
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    const patternRanges = {
+      tree: { min: 1, max: 9 },
+      koch: { min: 1, max: 5 },
+      sierpinski: { min: 1, max: 9 },
+      phyllotaxis: { min: 1, max: 10 },
+      hypotrochoid: { min: 1, max: 10 },
+      penrose: { min: 1, max: 6 }
+    };
+
+    const patternPresets = {
+      tree: { iterations: 6, branchAngle: 30, scaleFactor: 66, lineWidth: 1.0, palette: 'warm' },
+      koch: { iterations: 5, branchAngle: 58, scaleFactor: 72, lineWidth: 1.1, palette: 'mono' },
+      sierpinski: { iterations: 7, branchAngle: 0, scaleFactor: 82, lineWidth: 0.9, palette: 'neon' },
+      phyllotaxis: { iterations: 9, branchAngle: 137, scaleFactor: 72, lineWidth: 1.4, palette: 'warm' },
+      hypotrochoid: { iterations: 8, branchAngle: 112, scaleFactor: 72, lineWidth: 1.3, palette: 'cosmic' },
+      penrose: { iterations: 5, branchAngle: 16, scaleFactor: 72, lineWidth: 0.9, palette: 'cool' }
+    };
+
+    const controlProfiles = {
+      tree: {
+        branch: { label: '分支角度', min: 26, max: 36, step: 1, unit: '°' },
+        scale: { label: '基底尺度', min: 64, max: 74, step: 1, unit: '/100' }
+      },
+      koch: {
+        branch: { label: '雪峰角', min: 54, max: 66, step: 1, unit: '°' },
+        scale: { label: '构图占比', min: 68, max: 78, step: 1, unit: '/100' }
+      },
+      sierpinski: {
+        branch: { label: '三角朝向', min: 0, max: 120, step: 1, unit: '°' },
+        scale: { label: '画面占比', min: 72, max: 88, step: 1, unit: '/100' }
+      },
+      phyllotaxis: {
+        branch: { label: '发散角', min: 134, max: 140, step: 1, unit: '°' },
+        scale: { label: '点阵密度', min: 68, max: 78, step: 1, unit: '/100' }
+      },
+      hypotrochoid: {
+        branch: { label: '滚动偏移', min: 104, max: 128, step: 1, unit: '°' },
+        scale: { label: '轮比尺度', min: 68, max: 76, step: 1, unit: '/100' }
+      },
+      penrose: {
+        branch: { label: '扭转角', min: 14, max: 28, step: 1, unit: '°' },
+        scale: { label: '层间缩放', min: 66, max: 76, step: 1, unit: '/100' }
+      }
+    };
+
+    const randomProfiles = {
+      tree: { iterations: [5, 8], branch: [28, 34], scale: [64, 70], lineWidth: [0.9, 1.2], palettes: ['warm', 'cool'] },
+      koch: { iterations: [4, 5], branch: [55, 64], scale: [69, 77], lineWidth: [1.0, 1.4], palettes: ['mono', 'cool'] },
+      sierpinski: { iterations: [6, 8], branch: [0, 120], scale: [76, 86], lineWidth: [0.8, 1.1], palettes: ['neon', 'cool'] },
+      phyllotaxis: { iterations: [7, 10], branch: [135, 139], scale: [69, 77], lineWidth: [1.2, 1.6], palettes: ['warm', 'cosmic'] },
+      hypotrochoid: { iterations: [7, 9], branch: [108, 122], scale: [70, 75], lineWidth: [1.1, 1.5], palettes: ['cosmic', 'mono'] },
+      penrose: { iterations: [4, 6], branch: [15, 24], scale: [69, 75], lineWidth: [0.8, 1.1], palettes: ['cool', 'mono', 'warm'] }
+    };
+
+    const palettes = {
+      cool: ['#7dd3fc', '#3b82f6', '#67e8f9', '#a5f3fc'],
+      neon: ['#fb7185', '#f43f5e', '#e879f9', '#38bdf8'],
+      warm: ['#fde68a', '#fb923c', '#f97316', '#ea580c'],
+      mono: ['#e2e8f0', '#a5b4fc', '#c7d2fe', '#93c5fd'],
+      cosmic: ['#93c5fd', '#a78bfa', '#f472b6', '#67e8f9']
+    };
+
+    const paletteOf = (t, name) => {
+      const arr = palettes[name] || palettes.cool;
+      if (arr.length < 2) return arr[0];
+      const total = arr.length - 1;
+      const p = clamp(t, 0, 1);
+      const x = p * total;
+      const i = Math.min(total - 1, Math.floor(x));
+      const f = x - i;
+      const a = hexToRgb(arr[i]);
+      const b = hexToRgb(arr[i + 1]);
+      const r = Math.round(a.r + (b.r - a.r) * f);
+      const g = Math.round(a.g + (b.g - a.g) * f);
+      const blue = Math.round(a.b + (b.b - a.b) * f);
+      return `rgb(${r},${g},${blue})`;
+    };
+
+    function hexToRgb(hex) {
+      const clean = hex.replace('#', '');
+      const bigint = parseInt(clean.length === 3 ? clean.split('').map((x) => x + x).join('') : clean, 16);
+      return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255
+      };
+    }
+
+    function updatePatternControls() {
+      const key = patternEl.value;
+      const cfg = patternRanges[key] || { min: 1, max: 12 };
+      const profile = controlProfiles[key] || controlProfiles.tree;
+      iterationsEl.min = cfg.min;
+      iterationsEl.max = cfg.max;
+      iterationsEl.value = clamp(Number(iterationsEl.value), cfg.min, cfg.max);
+      branchAngleLabel.textContent = profile.branch.label;
+      branchAngleEl.min = profile.branch.min;
+      branchAngleEl.max = profile.branch.max;
+      branchAngleEl.step = profile.branch.step;
+      branchAngleEl.value = clamp(Number(branchAngleEl.value), profile.branch.min, profile.branch.max);
+      scaleFactorLabel.textContent = profile.scale.label;
+      scaleFactorEl.min = profile.scale.min;
+      scaleFactorEl.max = profile.scale.max;
+      scaleFactorEl.step = profile.scale.step;
+      scaleFactorEl.value = clamp(Number(scaleFactorEl.value), profile.scale.min, profile.scale.max);
+      syncUiLabels();
+    }
+
+    function applyPatternPreset(key) {
+      const preset = patternPresets[key];
+      if (!preset) return;
+      iterationsEl.value = clamp(preset.iterations, Number(iterationsEl.min), Number(iterationsEl.max));
+      branchAngleEl.value = preset.branchAngle;
+      scaleFactorEl.value = preset.scaleFactor;
+      lineWidthEl.value = preset.lineWidth;
+      paletteEl.value = preset.palette;
+      syncUiLabels();
+    }
+
+    function formatControlValue(value, control) {
+      if (control.unit === '/100') return `${value}/100`;
+      if (control.unit) return `${value}${control.unit}`;
+      return `${value}`;
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randomFloat(min, max, step = 0.1) {
+      const steps = Math.round((max - min) / step);
+      return (min + randomInt(0, steps) * step).toFixed(1);
+    }
+
+    function pickOne(list) {
+      return list[randomInt(0, list.length - 1)];
+    }
+
+    function fitCanvas() {
+      const wrap = canvas.parentElement;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const rect = wrap.getBoundingClientRect();
+      canvasDpr = dpr;
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      lastRenderKey = '';
+    }
+
+    function syncUiLabels() {
+      const profile = controlProfiles[patternEl.value] || controlProfiles.tree;
+      iterationsValue.textContent = iterationsEl.value;
+      branchAngleValue.textContent = formatControlValue(branchAngleEl.value, profile.branch);
+      scaleFactorValue.textContent = formatControlValue(scaleFactorEl.value, profile.scale);
+      lineWidthValue.textContent = Number(lineWidthEl.value).toFixed(1);
+      playDelayValue.textContent = `${playDelayEl.value}ms`;
+    }
+
+    function baseStyle() {
+      const width = canvas.width / canvasDpr;
+      const height = canvas.height / canvasDpr;
+      const g = ctx.createLinearGradient(0, 0, 0, height);
+      g.addColorStop(0, 'rgba(8, 16, 44, 1)');
+      g.addColorStop(1, 'rgba(2, 6, 16, 1)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    function getCanvasSize() {
+      return {
+        w: canvas.width / canvasDpr,
+        h: canvas.height / canvasDpr
+      };
+    }
+
+    function getPerfFactor() {
+      const { w, h } = getCanvasSize();
+      const area = w * h;
+      if (area > 1300000) return 0.68;
+      if (area > 900000) return 0.8;
+      if (area > 600000) return 0.9;
+      return 1;
+    }
+
+    function buildRenderKey(depth) {
+      return [
+        patternEl.value,
+        depth,
+        branchAngleEl.value,
+        scaleFactorEl.value,
+        lineWidthEl.value,
+        paletteEl.value,
+        canvas.width,
+        canvas.height
+      ].join('|');
+    }
+
+    function withAlpha(color, alpha) {
+      if (color.startsWith('rgb(')) {
+        return color.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
+      }
+      return color;
+    }
+
+    function rotateVector(x, y, angle) {
+      return {
+        x: x * Math.cos(angle) - y * Math.sin(angle),
+        y: x * Math.sin(angle) + y * Math.cos(angle)
+      };
+    }
+
+    function fitPointsToCanvas(points, width, height, paddingRatio) {
+      if (!points.length) return [];
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      for (const point of points) {
+        minX = Math.min(minX, point.x);
+        minY = Math.min(minY, point.y);
+        maxX = Math.max(maxX, point.x);
+        maxY = Math.max(maxY, point.y);
+      }
+
+      const spanX = Math.max(1, maxX - minX);
+      const spanY = Math.max(1, maxY - minY);
+      const usableW = width * (1 - paddingRatio * 2);
+      const usableH = height * (1 - paddingRatio * 2);
+      const scale = Math.min(usableW / spanX, usableH / spanY);
+      const offsetX = (width - spanX * scale) / 2 - minX * scale;
+      const offsetY = (height - spanY * scale) / 2 - minY * scale;
+
+      return points.map((point) => ({
+        x: point.x * scale + offsetX,
+        y: point.y * scale + offsetY
+      }));
+    }
+
+    function drawGradientPath(points, widthBase, alpha = 0.92, closed = false) {
+      if (points.length < 2) return;
+      for (let i = 1; i < points.length; i++) {
+        const t = i / (points.length - 1);
+        ctx.beginPath();
+        ctx.moveTo(points[i - 1].x, points[i - 1].y);
+        ctx.lineTo(points[i].x, points[i].y);
+        ctx.strokeStyle = withAlpha(paletteOf(t, paletteEl.value), alpha);
+        ctx.lineWidth = widthBase * (0.8 + t * 0.55);
+        ctx.stroke();
+      }
+      if (closed) {
+        ctx.beginPath();
+        ctx.moveTo(points[points.length - 1].x, points[points.length - 1].y);
+        ctx.lineTo(points[0].x, points[0].y);
+        ctx.strokeStyle = withAlpha(paletteOf(1, paletteEl.value), alpha);
+        ctx.lineWidth = widthBase * 1.15;
+        ctx.stroke();
+      }
+    }
+
+    function createSeededRandom(seed) {
+      let state = (seed >>> 0) || 1;
+      return () => {
+        state = (state * 1664525 + 1013904223) >>> 0;
+        return state / 4294967296;
+      };
+    }
+
+    function gcd(a, b) {
+      let x = Math.abs(Math.round(a));
+      let y = Math.abs(Math.round(b));
+      while (y) {
+        const t = x % y;
+        x = y;
+        y = t;
+      }
+      return x || 1;
+    }
+
+    function polygonArea(poly) {
+      let sum = 0;
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i];
+        const b = poly[(i + 1) % poly.length];
+        sum += a.x * b.y - b.x * a.y;
+      }
+      return sum / 2;
+    }
+
+    function polygonCentroid(poly) {
+      let areaTerm = 0;
+      let cx = 0;
+      let cy = 0;
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i];
+        const b = poly[(i + 1) % poly.length];
+        const cross = a.x * b.y - b.x * a.y;
+        areaTerm += cross;
+        cx += (a.x + b.x) * cross;
+        cy += (a.y + b.y) * cross;
+      }
+      const area = areaTerm / 2;
+      if (Math.abs(area) < 1e-6) {
+        return poly[0] || { x: 0, y: 0 };
+      }
+      return {
+        x: cx / (6 * area),
+        y: cy / (6 * area)
+      };
+    }
+
+    function clipPolygonWithBisector(poly, siteA, siteB) {
+      const ax = siteA.x;
+      const ay = siteA.y;
+      const bx = siteB.x;
+      const by = siteB.y;
+      const evalPoint = (p) => (bx - ax) * p.x + (by - ay) * p.y - (bx * bx + by * by - ax * ax - ay * ay) / 2;
+      const result = [];
+      for (let i = 0; i < poly.length; i++) {
+        const current = poly[i];
+        const next = poly[(i + 1) % poly.length];
+        const currentValue = evalPoint(current);
+        const nextValue = evalPoint(next);
+        const currentInside = currentValue <= 0;
+        const nextInside = nextValue <= 0;
+        if (currentInside) {
+          result.push(current);
+        }
+        if (currentInside !== nextInside) {
+          const t = currentValue / (currentValue - nextValue);
+          result.push({
+            x: current.x + (next.x - current.x) * t,
+            y: current.y + (next.y - current.y) * t
+          });
+        }
+      }
+      return result;
+    }
+
+    function computeVoronoiCells(sites, width, height) {
+      const bounds = [
+        { x: 0, y: 0 },
+        { x: width, y: 0 },
+        { x: width, y: height },
+        { x: 0, y: height }
+      ];
+      return sites.map((site, i) => {
+        let poly = bounds;
+        for (let j = 0; j < sites.length && poly.length; j++) {
+          if (i === j) continue;
+          poly = clipPolygonWithBisector(poly, site, sites[j]);
+        }
+        return poly;
+      });
+    }
+
+    function complex(re, im) {
+      return { re, im };
+    }
+
+    function complexMul(a, b) {
+      return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re };
+    }
+
+    function drawSquare(points, fill, stroke, lineWidth) {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      ctx.lineTo(points[1].x, points[1].y);
+      ctx.lineTo(points[2].x, points[2].y);
+      ctx.lineTo(points[3].x, points[3].y);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineWidth;
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    function drawSquareTree(p0, p1, depth, maxDepth) {
+      if (depth <= 0) return;
+
+      const vx = p1.x - p0.x;
+      const vy = p1.y - p0.y;
+      const up = { x: vy, y: -vx };
+      const p2 = { x: p1.x + up.x, y: p1.y + up.y };
+      const p3 = { x: p0.x + up.x, y: p0.y + up.y };
+      const t = clamp((maxDepth - depth) / Math.max(1, maxDepth - 1), 0, 1);
+      const fill = paletteOf(t, paletteEl.value);
+      const stroke = withAlpha(fill, 0.45);
+      const glowWidth = Math.max(0.6, Number(lineWidthEl.value) * (0.4 + depth / (maxDepth + 1)));
+
+      ctx.shadowColor = withAlpha(fill, 0.35);
+      ctx.shadowBlur = 18;
+      drawSquare([p0, p1, p2, p3], withAlpha(fill, 0.78), stroke, glowWidth);
+      ctx.shadowBlur = 0;
+
+      if (depth === 1) return;
+
+      const angle = clamp((Number(branchAngleEl.value) * Math.PI) / 180, Math.PI / 12, Math.PI / 2.2);
+      const leftEdge = rotateVector(vx, vy, -angle);
+      const apex = {
+        x: p3.x + leftEdge.x * Math.cos(angle),
+        y: p3.y + leftEdge.y * Math.cos(angle)
+      };
+
+      drawSquareTree(p3, apex, depth - 1, maxDepth);
+      drawSquareTree(apex, p2, depth - 1, maxDepth);
+    }
+
+    function drawFractalTree(depth) {
+      const { w, h } = getCanvasSize();
+      const baseScale = 0.12 + ((Number(scaleFactorEl.value) - 55) / 30) * 0.08;
+      const baseSize = Math.min(w, h) * clamp(baseScale, 0.11, 0.22);
+      const p0 = { x: w * 0.5 - baseSize / 2, y: h * 0.92 };
+      const p1 = { x: w * 0.5 + baseSize / 2, y: h * 0.92 };
+
+      const glow = ctx.createRadialGradient(w * 0.5, h * 0.84, baseSize * 0.2, w * 0.5, h * 0.84, baseSize * 2.7);
+      glow.addColorStop(0, withAlpha(paletteOf(0.65, paletteEl.value), 0.24));
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.84, baseSize * 2.7, 0, Math.PI * 2);
+      ctx.fill();
+
+      drawSquareTree(p0, p1, depth, depth);
+      status.textContent = `正方形分形树：深度 ${depth}，角度 ${branchAngleEl.value}°`;
+    }
+
+    function collectKochSegment(points, start, end, depth, spikeAngle) {
+      if (depth <= 0) {
+        points.push(start);
+        return;
+      }
+
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const xA = start.x + dx / 3;
+      const yA = start.y + dy / 3;
+      const xB = start.x + (dx * 2) / 3;
+      const yB = start.y + (dy * 2) / 3;
+      const vx = xB - xA;
+      const vy = yB - yA;
+
+      const rot = spikeAngle;
+      const xC = xA + vx * Math.cos(rot) - vy * Math.sin(rot);
+      const yC = yA + vx * Math.sin(rot) + vy * Math.cos(rot);
+
+      collectKochSegment(points, start, { x: xA, y: yA }, depth - 1, spikeAngle);
+      collectKochSegment(points, { x: xA, y: yA }, { x: xC, y: yC }, depth - 1, spikeAngle);
+      collectKochSegment(points, { x: xC, y: yC }, { x: xB, y: yB }, depth - 1, spikeAngle);
+      collectKochSegment(points, { x: xB, y: yB }, end, depth - 1, spikeAngle);
+    }
+
+    function drawKoch(depth) {
+      const { w, h } = getCanvasSize();
+      const spikeAngle = clamp((Number(branchAngleEl.value) * Math.PI) / 180, Math.PI / 3.5, Math.PI / 2.55);
+      const scaleRatio = clamp(Number(scaleFactorEl.value) / 100, 0.64, 0.8);
+      const side = Math.min(w, h) * scaleRatio;
+      const cx = w / 2;
+      const cy = h * 0.59;
+      const r = side / Math.sqrt(3);
+
+      const a = {
+        x: cx - side / 2,
+        y: cy + r / 2,
+      };
+      const b = {
+        x: cx + side / 2,
+        y: cy + r / 2,
+      };
+      const c = {
+        x: cx,
+        y: cy - r,
+      };
+
+      const points = [];
+      collectKochSegment(points, a, b, depth, spikeAngle);
+      collectKochSegment(points, b, c, depth, spikeAngle);
+      collectKochSegment(points, c, a, depth, spikeAngle);
+      points.push(a);
+
+      const glow = ctx.createRadialGradient(cx, cy, side * 0.1, cx, cy, side);
+      glow.addColorStop(0, withAlpha(paletteOf(0.8, paletteEl.value), 0.2));
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, side, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = withAlpha(paletteOf(0.55, paletteEl.value), 0.14);
+      ctx.strokeStyle = withAlpha(paletteOf(0.95, paletteEl.value), 0.35);
+      ctx.lineWidth = Number(lineWidthEl.value) * 2.6;
+      ctx.shadowColor = withAlpha(paletteOf(0.7, paletteEl.value), 0.45);
+      ctx.shadowBlur = 26;
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      for (let i = 1; i < points.length; i++) {
+        const t = i / (points.length - 1);
+        ctx.beginPath();
+        ctx.moveTo(points[i - 1].x, points[i - 1].y);
+        ctx.lineTo(points[i].x, points[i].y);
+        ctx.strokeStyle = withAlpha(paletteOf(t, paletteEl.value), 0.95);
+        ctx.lineWidth = Number(lineWidthEl.value) * (1.05 + t * 0.35);
+        ctx.stroke();
+      }
+      status.textContent = `Koch 雪花：深度 ${depth}，雪峰角 ${branchAngleEl.value}°`;
+    }
+
+    function drawSierpinski(x1, y1, x2, y2, x3, y3, depth, maxDepth) {
+      if (depth <= 0) {
+        const canvasHeight = canvas.height / canvasDpr;
+        const centroidY = (y1 + y2 + y3) / 3;
+        const progress = clamp(0.15 + (1 - centroidY / canvasHeight) * 0.85, 0, 1);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(x3, y3);
+        ctx.closePath();
+        ctx.fillStyle = withAlpha(paletteOf(progress, paletteEl.value), 0.82);
+        ctx.strokeStyle = withAlpha(paletteOf(progress + 0.15, paletteEl.value), 0.2);
+        ctx.lineWidth = Math.max(0.4, Number(lineWidthEl.value) * 0.75);
+        ctx.fill();
+        ctx.stroke();
+        return;
+      }
+
+      const m12x = (x1 + x2) / 2;
+      const m12y = (y1 + y2) / 2;
+      const m23x = (x2 + x3) / 2;
+      const m23y = (y2 + y3) / 2;
+      const m31x = (x3 + x1) / 2;
+      const m31y = (y3 + y1) / 2;
+
+      drawSierpinski(x1, y1, m12x, m12y, m31x, m31y, depth - 1, maxDepth);
+      drawSierpinski(m12x, m12y, x2, y2, m23x, m23y, depth - 1, maxDepth);
+      drawSierpinski(m31x, m31y, m23x, m23y, x3, y3, depth - 1, maxDepth);
+    }
+
+    function drawSierpinskiPattern(depth) {
+      const { w, h } = getCanvasSize();
+      const fillRatio = clamp(Number(scaleFactorEl.value) / 100, 0.66, 0.92);
+      const side = Math.min(w * 0.78, (h * 0.82) / (Math.sqrt(3) / 2)) * fillRatio;
+      const triHeight = side * Math.sqrt(3) / 2;
+      const center = { x: w / 2, y: h * 0.54 };
+      const rotation = (Number(branchAngleEl.value) * Math.PI) / 180;
+      const baseVertices = [
+        { x: center.x - side / 2, y: center.y + triHeight / 2 },
+        { x: center.x + side / 2, y: center.y + triHeight / 2 },
+        { x: center.x, y: center.y - triHeight / 2 }
+      ];
+      const rotatePoint = (point) => {
+        const dx = point.x - center.x;
+        const dy = point.y - center.y;
+        return {
+          x: center.x + dx * Math.cos(rotation) - dy * Math.sin(rotation),
+          y: center.y + dx * Math.sin(rotation) + dy * Math.cos(rotation)
+        };
+      };
+      const [a, b, c] = baseVertices.map(rotatePoint);
+
+      const halo = ctx.createRadialGradient(w * 0.5, h * 0.58, 10, w * 0.5, h * 0.58, Math.min(w, h) * 0.45);
+      halo.addColorStop(0, withAlpha(paletteOf(0.65, paletteEl.value), 0.22));
+      halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.58, Math.min(w, h) * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+
+      drawSierpinski(a.x, a.y, b.x, b.y, c.x, c.y, depth, depth);
+      status.textContent = `谢尔宾斯基三角：深度 ${depth}，朝向 ${branchAngleEl.value}°`;
+    }
+
+    function drawPhyllotaxis(depth) {
+      const { w, h } = getCanvasSize();
+      const perf = getPerfFactor();
+      const count = Math.round((220 + depth * 160) * perf);
+      const divergence = (Number(branchAngleEl.value) * Math.PI) / 180;
+      const spread = clamp(Number(scaleFactorEl.value) / 100, 0.64, 0.82);
+      const maxRadius = Math.min(w, h) * 0.43 * spread;
+      const step = maxRadius / Math.sqrt(count);
+      const halo = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, maxRadius * 1.05);
+      halo.addColorStop(0, withAlpha(paletteOf(0.08, paletteEl.value), 0.22));
+      halo.addColorStop(0.55, withAlpha(paletteOf(0.45, paletteEl.value), 0.08));
+      halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(w / 2, h / 2, maxRadius * 1.05, 0, Math.PI * 2);
+      ctx.fill();
+
+      for (let i = 0; i < count; i++) {
+        const t = i / Math.max(1, count - 1);
+        const radius = step * Math.sqrt(i);
+        const theta = i * divergence;
+        const x = w / 2 + Math.cos(theta) * radius;
+        const y = h / 2 + Math.sin(theta) * radius;
+        const size = Number(lineWidthEl.value) * (0.95 + 2.15 * (1 - t));
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fillStyle = withAlpha(paletteOf(t, paletteEl.value), 0.9);
+        ctx.fill();
+      }
+      status.textContent = `葵花螺旋：${count} 个点，发散角 ${branchAngleEl.value}°`;
+    }
+
+    function drawHypotrochoid(depth) {
+      const { w, h } = getCanvasSize();
+      const perf = getPerfFactor();
+      const R = 40 + depth * 4;
+      let r = Math.max(7, Math.round(11 + (100 - Number(scaleFactorEl.value)) / 3.4));
+      if (gcd(R, r) > 1) r += 1;
+      const d = r * (0.92 + Number(branchAngleEl.value) / 240);
+      const loops = r / gcd(R, r);
+      const samples = Math.round((820 + depth * 140) * perf);
+      const rawPoints = [];
+
+      for (let i = 0; i <= samples; i++) {
+        const t = (i / samples) * Math.PI * 2 * loops;
+        rawPoints.push({
+          x: (R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t),
+          y: (R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t)
+        });
+      }
+
+      const points = fitPointsToCanvas(rawPoints, w, h, 0.14);
+      const halo = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, Math.min(w, h) * 0.42);
+      halo.addColorStop(0, withAlpha(paletteOf(0.35, paletteEl.value), 0.18));
+      halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(w / 2, h / 2, Math.min(w, h) * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+      ctx.closePath();
+      ctx.fillStyle = withAlpha(paletteOf(0.55, paletteEl.value), 0.07);
+      ctx.fill();
+      drawGradientPath(points, Number(lineWidthEl.value) * 1.2, 0.88, true);
+      status.textContent = `滚轮曲线：外轮 ${R}，内轮 ${r}，偏移 ${d.toFixed(1)}`;
+    }
+
+    function drawPenrose(depth) {
+      const { w, h } = getCanvasSize();
+      const cx = w / 2;
+      const cy = h / 2;
+      const phi = (1 + Math.sqrt(5)) / 2;
+      const scaleRatio = clamp(Number(scaleFactorEl.value) / 100, 0.62, 0.78);
+      const base = Math.min(w, h) * 0.38 * scaleRatio;
+      const layers = depth + 2;
+      const rotationStep = (Number(branchAngleEl.value) * Math.PI) / 180 * 0.5;
+      const shrink = 0.71 + (scaleRatio - 0.62) * 0.9;
+
+      for (let layer = 0; layer < layers; layer++) {
+        const outerR = base * Math.pow(shrink, layer);
+        const innerR = outerR / phi * (0.92 + layer * 0.02);
+        const rotation = layer * rotationStep;
+        const outer = [];
+        const inner = [];
+
+        for (let i = 0; i < 10; i++) {
+          const theta = rotation + i * Math.PI / 5;
+          const innerTheta = theta + Math.PI / 10;
+          outer.push({ x: cx + Math.cos(theta) * outerR, y: cy + Math.sin(theta) * outerR });
+          inner.push({ x: cx + Math.cos(innerTheta) * innerR, y: cy + Math.sin(innerTheta) * innerR });
+        }
+
+        for (let i = 0; i < 10; i++) {
+          const rhomb = [outer[i], inner[i], outer[(i + 1) % 10], inner[(i + 1) % 10]];
+          ctx.beginPath();
+          ctx.moveTo(rhomb[0].x, rhomb[0].y);
+          for (let j = 1; j < rhomb.length; j++) ctx.lineTo(rhomb[j].x, rhomb[j].y);
+          ctx.closePath();
+          const t = (layer * 10 + i) / Math.max(1, layers * 10 - 1);
+          ctx.fillStyle = withAlpha(paletteOf(t, paletteEl.value), 0.2 + (1 - layer / layers) * 0.18);
+          ctx.strokeStyle = withAlpha(paletteOf(1 - t, paletteEl.value), 0.42);
+          ctx.lineWidth = Math.max(0.4, Number(lineWidthEl.value) * 0.8);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+
+      status.textContent = `Penrose 准晶：${layers} 层，扭转 ${branchAngleEl.value}°`;
+    }
+
+    function renderNow(depth = Number(iterationsEl.value)) {
+      baseStyle();
+      const selected = patternEl.value;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = Number(lineWidthEl.value);
+
+      if (selected === 'tree') {
+        drawFractalTree(depth);
+      } else if (selected === 'koch') {
+        drawKoch(depth);
+      } else if (selected === 'sierpinski') {
+        drawSierpinskiPattern(depth);
+      } else if (selected === 'phyllotaxis') {
+        drawPhyllotaxis(depth);
+      } else if (selected === 'hypotrochoid') {
+        drawHypotrochoid(depth);
+      } else if (selected === 'penrose') {
+        drawPenrose(depth);
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function render(depth = Number(iterationsEl.value), force = false) {
+      pendingDepth = depth;
+      if (renderFrame) return;
+      renderFrame = requestAnimationFrame(() => {
+        renderFrame = 0;
+        const nextDepth = pendingDepth ?? Number(iterationsEl.value);
+        pendingDepth = null;
+        const key = buildRenderKey(nextDepth);
+        if (!force && key === lastRenderKey) return;
+        lastRenderKey = key;
+        renderNow(nextDepth);
+      });
+    }
+
+    function setRandomParams() {
+      const key = patternEl.value;
+      const cfg = randomProfiles[key] || randomProfiles.tree;
+      iterationsEl.value = randomInt(cfg.iterations[0], cfg.iterations[1]);
+      branchAngleEl.value = randomInt(cfg.branch[0], cfg.branch[1]);
+      scaleFactorEl.value = randomInt(cfg.scale[0], cfg.scale[1]);
+      lineWidthEl.value = randomFloat(cfg.lineWidth[0], cfg.lineWidth[1]);
+      paletteEl.value = pickOne(cfg.palettes);
+      playDelayEl.value = randomInt(3, 6) * 100;
+      syncUiLabels();
+      lastRenderKey = '';
+      render();
+    }
+
+    function togglePlay() {
+      if (playing) {
+        clearInterval(playTimer);
+        playTimer = null;
+        playing = false;
+        playBtn.textContent = '逐层播放';
+        return;
+      }
+      playing = true;
+      playBtn.textContent = '停止播放';
+      let i = 1;
+      const max = Number(iterationsEl.max);
+      render(1);
+      playTimer = setInterval(() => {
+        if (!playing) return;
+        i = clamp(i + 1, 1, max);
+        iterationsEl.value = i;
+        syncUiLabels();
+        render(i);
+        if (i >= max) {
+          i = 0;
+        }
+      }, Number(playDelayEl.value));
+    }
+
+    function setupListeners() {
+      window.addEventListener('resize', () => {
+        fitCanvas();
+        render();
+      });
+
+      for (const el of [iterationsEl, branchAngleEl, scaleFactorEl, lineWidthEl, playDelayEl, paletteEl]) {
+        el.addEventListener('input', () => {
+          syncUiLabels();
+          render();
+          if (playing) {
+            clearInterval(playTimer);
+            playing = false;
+            playBtn.textContent = '逐层播放';
+          }
+        });
+      }
+
+      patternEl.addEventListener('change', () => {
+        updatePatternControls();
+        applyPatternPreset(patternEl.value);
+        render();
+      });
+
+      renderBtn.addEventListener('click', () => {
+        if (playing) {
+          clearInterval(playTimer);
+          playing = false;
+          playBtn.textContent = '逐层播放';
+        }
+        lastRenderKey = '';
+        render(Number(iterationsEl.value), true);
+      });
+
+      playBtn.addEventListener('click', togglePlay);
+      randomBtn.addEventListener('click', setRandomParams);
+    }
+
+    updatePatternControls();
+    applyPatternPreset(patternEl.value);
+    fitCanvas();
+    setupListeners();
+    render();
+  </script>
+</body>
 </html>

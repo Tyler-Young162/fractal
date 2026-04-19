@@ -1081,10 +1081,10 @@ const PRESETS = [
     { id:'nebula', name:'星云晶花', desc:'冷色虹辉 · 适合第一眼吸引', color:'#7df1ff', engine:'radial',
       shapes:['triangle','flower','circle'],
       params:{depth:5,scale:0.49,branches:0,layerRot:12,spiral:0.16,spread:1.12,center:false,mirror:false,spin:0.22,pulse:0.05,hueShift:14}, layout:{} },
-    { id:'mandala', name:'法阵绽放', desc:'高对称度 · 法阵与万花筒', color:'#ff8ddd', engine:'radial',
+    { id:'mandala', name:'法阵绽放', desc:'高对称度 · 法阵与万花筒', color:'#ff8ddd', engine:'radial', hidden:true,
       shapes:['star5','circle','cross4'],
       params:{depth:5,scale:0.44,branches:0,layerRot:29,spiral:-0.06,spread:0.94,center:true,mirror:true,spin:0.12,pulse:0.04,hueShift:18}, layout:{alternateRotation:12} },
-    { id:'coral', name:'珊瑚脉络', desc:'暖色扩散 · 海底枝状群落', color:'#ff8f66', engine:'coral',
+    { id:'coral', name:'珊瑚脉络', desc:'暖色扩散 · 海底枝状群落', color:'#ff8f66', engine:'coral', hidden:true,
       shapes:['flower','circle','star5'],
       params:{depth:6,scale:0.7,branches:3,layerRot:0,spiral:0.12,spread:1.08,center:false,mirror:false,spin:0.04,pulse:0.03,hueShift:14},
       layout:{maxBranches:3,arcDeg:44,radiusScaleDesktop:0.18,radiusScaleMobile:0.15,centerYBias:0.76,branchJitterDeg:4.5,swayDeg:3} },
@@ -2436,7 +2436,7 @@ function refreshDerivedState(syncControls = false) {
 // ══════════════════════════════════════════════════
 function renderPresets() {
     const row = document.getElementById('presetRow'); row.innerHTML = '';
-    PRESETS.forEach(p => {
+    PRESETS.filter(p => !p.hidden).forEach(p => {
         const btn = document.createElement('button');
         btn.type='button'; btn.className='preset-btn'; btn.dataset.preset=p.id;
         btn.innerHTML=`<span class="preset-name">${p.name}</span><span class="preset-meta">${p.desc}</span>`;

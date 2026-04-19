@@ -1,0 +1,2743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分形创世实验舱 - 动态漂移对比版</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --panel-width: clamp(340px, 32vw, 440px);
+            --bg: #060912;
+            --bg-soft: rgba(11, 18, 32, 0.9);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(146, 224, 255, 0.22);
+            --text-main: #eef6ff;
+            --text-muted: rgba(221, 235, 255, 0.62);
+            --text-faint: rgba(198, 216, 241, 0.42);
+            --accent: #78f2ff;
+            --accent-soft: rgba(120, 242, 255, 0.18);
+            --danger: #ff8ca6;
+            --shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            position: relative;
+            background:
+                radial-gradient(circle at top left, rgba(47, 124, 255, 0.16), transparent 36%),
+                radial-gradient(circle at bottom right, rgba(0, 194, 255, 0.12), transparent 34%),
+                linear-gradient(135deg, #03050a 0%, #09111d 45%, #04070f 100%);
+            color: var(--text-main);
+            font-family: "Noto Sans SC", sans-serif;
+        }
+
+        canvas {
+            position: fixed !important;
+            inset: 0;
+            display: block;
+            z-index: 0;
+        }
+
+        #ui-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: var(--panel-width);
+            z-index: 2;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background:
+                linear-gradient(180deg, rgba(8, 15, 30, 0.94) 0%, rgba(6, 12, 24, 0.86) 100%);
+            backdrop-filter: blur(24px) saturate(130%);
+            -webkit-backdrop-filter: blur(24px) saturate(130%);
+            border-right: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(120, 242, 255, 0.24) transparent;
+        }
+
+        #ui-panel::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(180deg, rgba(120, 242, 255, 0.08), transparent 26%),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05), transparent 14%);
+            opacity: 0.75;
+        }
+
+        #ui-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #ui-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #ui-panel::-webkit-scrollbar-thumb {
+            background: rgba(120, 242, 255, 0.24);
+            border-radius: 999px;
+        }
+
+        .panel-header,
+        .section,
+        .footer-tips {
+            position: relative;
+            z-index: 1;
+        }
+
+        .panel-header {
+            padding: 30px 28px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(120, 242, 255, 0.18);
+            background: rgba(120, 242, 255, 0.06);
+            color: var(--text-muted);
+            font-size: 11px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 12px rgba(120, 242, 255, 0.85);
+        }
+
+        .panel-header h1 {
+            margin-top: 18px;
+            font-family: "Noto Serif SC", serif;
+            font-size: clamp(28px, 3.2vw, 38px);
+            line-height: 1.16;
+            letter-spacing: 0.03em;
+            color: #f7fbff;
+            text-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
+        }
+
+        .panel-header p {
+            margin-top: 12px;
+            max-width: 28ch;
+            font-size: 13px;
+            line-height: 1.8;
+            color: var(--text-muted);
+        }
+
+        .status-strip {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .status-card {
+            padding: 12px 14px;
+            min-height: 78px;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .status-card span {
+            display: block;
+            color: var(--text-faint);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .status-card strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 20px;
+            color: #f8fcff;
+            letter-spacing: 0.02em;
+        }
+
+        .status-card em {
+            display: block;
+            margin-top: 8px;
+            font-style: normal;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-muted);
+        }
+
+        .section {
+            padding: 22px 28px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .section-title {
+            margin-bottom: 14px;
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .preset-btn,
+        .shape-btn,
+        .queue-chip,
+        .toggle-switch,
+        .palette-swatch {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .preset-btn {
+            text-align: left;
+            padding: 14px 14px 13px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+            color: var(--text-main);
+            cursor: pointer;
+            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .preset-btn:hover {
+            transform: translateY(-2px);
+            border-color: rgba(120, 242, 255, 0.24);
+        }
+
+        .preset-btn.active {
+            border-color: var(--border-strong);
+            background:
+                linear-gradient(180deg, rgba(120, 242, 255, 0.18), rgba(120, 242, 255, 0.05));
+            box-shadow: inset 0 0 0 1px rgba(120, 242, 255, 0.12);
+        }
+
+        .preset-name {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .preset-meta {
+            display: block;
+            margin-top: 6px;
+            font-size: 11px;
+            line-height: 1.55;
+            color: var(--text-muted);
+        }
+
+        .shape-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .shape-btn {
+            padding: 10px 0;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+        .shape-btn:hover {
+            border-color: rgba(120, 242, 255, 0.2);
+            color: var(--text-main);
+        }
+
+        .shape-btn.active {
+            color: #eaffff;
+            border-color: rgba(120, 242, 255, 0.28);
+            background: linear-gradient(180deg, rgba(120, 242, 255, 0.18), rgba(120, 242, 255, 0.05));
+            box-shadow: inset 0 0 0 1px rgba(120, 242, 255, 0.1);
+        }
+
+        .queue-label {
+            margin: 16px 0 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        #shape-queue {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 52px;
+            padding: 10px;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.18);
+            border: 1px dashed rgba(120, 242, 255, 0.16);
+        }
+
+        .queue-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px 8px 9px;
+            border-radius: 999px;
+            border: 1px solid rgba(120, 242, 255, 0.2);
+            background: rgba(120, 242, 255, 0.11);
+            color: #dffcff;
+            font-size: 12px;
+            cursor: grab;
+            user-select: none;
+            transition: transform 0.18s ease, opacity 0.18s ease;
+        }
+
+        .queue-chip:active {
+            cursor: grabbing;
+        }
+
+        .queue-chip.dragging {
+            opacity: 0.4;
+            transform: scale(0.92);
+        }
+
+        .chip-order {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.26);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .chip-remove {
+            border: 0;
+            background: transparent;
+            color: rgba(226, 246, 255, 0.56);
+            font-size: 15px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .chip-remove:hover {
+            color: var(--danger);
+        }
+
+        .drop-indicator {
+            width: 4px;
+            margin: 0 -2px;
+            align-self: stretch;
+            border-radius: 999px;
+            background: linear-gradient(180deg, rgba(120, 242, 255, 0.18), rgba(120, 242, 255, 0.92));
+            box-shadow: 0 0 16px rgba(120, 242, 255, 0.75);
+        }
+
+        .param-row {
+            margin-bottom: 16px;
+        }
+
+        .param-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .param-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #edf6ff;
+        }
+
+        .param-val {
+            font-size: 12px;
+            color: var(--accent);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            padding: 4px 8px;
+        }
+
+        .param-hint {
+            font-size: 11px;
+            line-height: 1.6;
+            color: var(--text-faint);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            appearance: none;
+            border-radius: 999px;
+            outline: none;
+            background:
+                linear-gradient(90deg, rgba(120, 242, 255, 0.36), rgba(120, 242, 255, 0.06)),
+                rgba(255, 255, 255, 0.06);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.32);
+            background: #d8ffff;
+            box-shadow: 0 0 16px rgba(120, 242, 255, 0.52);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.32);
+            border-radius: 50%;
+            background: #d8ffff;
+            box-shadow: 0 0 16px rgba(120, 242, 255, 0.52);
+            cursor: pointer;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .toggle-label {
+            font-size: 13px;
+            color: #edf6ff;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 28px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .toggle-switch::after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-switch.on {
+            background: linear-gradient(90deg, rgba(120, 242, 255, 0.24), rgba(120, 242, 255, 0.7));
+            border-color: rgba(120, 242, 255, 0.28);
+        }
+
+        .toggle-switch.on::after {
+            transform: translateX(20px);
+        }
+
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 10px;
+        }
+
+        input[type="color"] {
+            width: 56px;
+            height: 40px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+        }
+
+        .palette-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .palette-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease;
+        }
+
+        .palette-swatch:hover {
+            transform: translateY(-2px) scale(1.03);
+        }
+
+        .palette-swatch.active {
+            border-color: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 0 14px rgba(255, 255, 255, 0.22);
+        }
+
+        .performance-note {
+            margin-top: 16px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.04);
+            font-size: 11px;
+            line-height: 1.7;
+            color: var(--text-muted);
+        }
+
+        .performance-note.warn {
+            border-color: rgba(255, 200, 117, 0.18);
+            background: rgba(255, 182, 90, 0.08);
+        }
+
+        .performance-note.danger {
+            border-color: rgba(255, 140, 166, 0.22);
+            background: rgba(255, 140, 166, 0.08);
+        }
+
+        .footer-tips {
+            padding: 18px 28px 28px;
+            font-size: 11px;
+            line-height: 1.8;
+            color: var(--text-faint);
+        }
+
+        .footer-tips b {
+            color: var(--text-muted);
+        }
+
+        /* ── FPS 计数器 ── */
+        #fps-counter {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 10;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.08);
+            font-size: 12px;
+            font-family: "SF Mono", monospace;
+            color: #6effa7;
+            pointer-events: none;
+        }
+        #fps-counter.warn { color: #ffba52; }
+        #fps-counter.bad { color: #ff6b8e; }
+
+        /* ── 设置按钮 & 面板 ── */
+        #settings-btn {
+            position: fixed;
+            top: 12px;
+            right: 120px;
+            z-index: 10;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.55);
+            color: #94a3b8;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        #settings-btn:hover { color: var(--accent); border-color: rgba(120,242,255,0.3); }
+        #settings-btn.active { color: var(--accent); background: rgba(120,242,255,0.12); border-color: rgba(120,242,255,0.3); }
+
+        #guide-btn {
+            position: fixed;
+            top: 12px;
+            right: 164px;
+            z-index: 10;
+            height: 36px;
+            padding: 0 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.55);
+            color: #cbd5e1;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #guide-btn:hover,
+        #guide-btn.active {
+            color: var(--accent);
+            border-color: rgba(120,242,255,0.3);
+            background: rgba(120,242,255,0.12);
+        }
+
+        #settings-panel {
+            position: fixed;
+            top: 56px;
+            right: 12px;
+            z-index: 10;
+            width: 240px;
+            padding: 16px;
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            display: none;
+        }
+        #settings-panel.open { display: block; }
+        #settings-panel h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-faint);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .fx-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+        }
+        .fx-toggle-label { font-size: 13px; color: #cbd5e1; }
+        .fx-toggle .toggle-switch { width: 40px; height: 22px; }
+        .fx-toggle .toggle-switch::after { width: 16px; height: 16px; top: 2px; left: 2px; }
+        .fx-toggle .toggle-switch.on::after { transform: translateX(18px); }
+
+        #guide-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(2, 6, 18, 0.68);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        #guide-modal.open { display: flex; }
+        .guide-card {
+            width: min(780px, calc(100vw - 24px));
+            max-height: min(84vh, 900px);
+            overflow: auto;
+            border-radius: 22px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background:
+                radial-gradient(circle at top left, rgba(120,242,255,0.12), transparent 34%),
+                linear-gradient(180deg, rgba(12, 19, 34, 0.98), rgba(8, 12, 24, 0.98));
+            box-shadow: 0 24px 80px rgba(0,0,0,0.46);
+            padding: 24px;
+        }
+        .guide-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .guide-kicker {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-faint);
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+        .guide-title {
+            margin: 0;
+            color: #f8fbff;
+            font-size: 28px;
+            line-height: 1.15;
+        }
+        .guide-subtitle {
+            margin: 8px 0 0;
+            color: #a7b7d0;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+        .guide-close {
+            width: 38px;
+            height: 38px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            color: #dce8ff;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .guide-close:hover {
+            color: var(--accent);
+            border-color: rgba(120,242,255,0.3);
+        }
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .guide-panel {
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.03);
+            padding: 16px;
+        }
+        .guide-panel h3 {
+            margin: 0 0 8px;
+            color: #edf4ff;
+            font-size: 15px;
+        }
+        .guide-panel p {
+            margin: 0;
+            color: #a5b7d2;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .guide-list {
+            margin: 0;
+            padding-left: 18px;
+            color: #a5b7d2;
+            font-size: 13px;
+            line-height: 1.75;
+        }
+        .guide-list li + li { margin-top: 6px; }
+
+        @media (max-width: 920px) {
+            html,
+            body {
+                overflow: auto;
+            }
+
+            body {
+                min-height: 100%;
+                overflow: hidden;
+            }
+
+            #ui-panel {
+                width: 100%;
+                max-height: 48vh;
+                border-right: 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            .status-strip,
+            .preset-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .guide-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .shape-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .panel-header,
+            .section,
+            .footer-tips {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .shape-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            #guide-btn {
+                right: 60px;
+                padding: 0 10px;
+                letter-spacing: 0.04em;
+            }
+        }
+    </style>
+</head>
+<body>
+<aside id="ui-panel">
+    <div class="panel-header">
+        <div class="eyebrow">Fractal Museum Drift Compare</div>
+        <h1>分形创世实验舱 · 动态漂移版</h1>
+        <p>这是一版对比方案。不是只让整张画旋转，而是让参数在安全区间里缓慢漂移，让图案本身也会温和变化。</p>
+        <div class="status-strip">
+            <div class="status-card">
+                <span>预计节点</span>
+                <strong id="metric-nodes">3,906</strong>
+                <em id="metric-branch">平均分裂 5.0</em>
+            </div>
+            <div class="status-card">
+                <span>渲染模式</span>
+                <strong id="metric-mode">辉光全开</strong>
+                <em id="metric-state">画面正在以完整效果运行。</em>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">① 灵感预设</div>
+        <div class="preset-grid" id="presetRow"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">② 基础生命体选择</div>
+        <div class="shape-grid" id="shapeGrid">
+            <button class="shape-btn" data-shape="triangle" type="button">三角形</button>
+            <button class="shape-btn" data-shape="circle" type="button">圆形</button>
+            <button class="shape-btn" data-shape="square" type="button">正方形</button>
+            <button class="shape-btn" data-shape="pentagon" type="button">五边形</button>
+            <button class="shape-btn" data-shape="hexagon" type="button">六边形</button>
+            <button class="shape-btn" data-shape="star5" type="button">五角星</button>
+            <button class="shape-btn" data-shape="cross4" type="button">四芒星</button>
+            <button class="shape-btn" data-shape="flower" type="button">樱花瓣</button>
+        </div>
+        <div class="queue-label">层级队列 · 拖拽改变各层交替顺序</div>
+        <div id="shape-queue"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">③ 分形算法引擎</div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">繁衍深度</span>
+                <span class="param-val" id="v-depth">5 级</span>
+            </div>
+            <input type="range" id="s-depth" min="0" max="6" step="1" value="5">
+            <div class="param-hint">层数越深，画面越密，节点数量也会指数级增长。</div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">基因收缩率</span>
+                <span class="param-val" id="v-scale">0.50</span>
+            </div>
+            <input type="range" id="s-scale" min="0.20" max="0.75" step="0.01" value="0.50">
+            <div class="param-hint">控制子代与母体的比例，决定图案是舒展还是堆叠。</div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">分裂数覆写</span>
+                <span class="param-val" id="v-branches">自动</span>
+            </div>
+            <input type="range" id="s-branches" min="0" max="10" step="1" value="0">
+            <div class="param-hint">0 表示跟随图形天然顶点，手动提升能得到更强的放射感。</div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">层间旋转角</span>
+                <span class="param-val" id="v-layerRot">0°</span>
+            </div>
+            <input type="range" id="s-layerRot" min="0" max="180" step="1" value="0">
+            <div class="param-hint">给每一层额外的旋转偏移，容易形成法阵和漩涡。</div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">螺旋因子</span>
+                <span class="param-val" id="v-spiral">0.00</span>
+            </div>
+            <input type="range" id="s-spiral" min="-1.0" max="1.0" step="0.01" value="0">
+            <div class="param-hint">控制子代向内卷曲还是向外旋开，适合做能量感变化。</div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">扩散半径比</span>
+                <span class="param-val" id="v-spread">1.00</span>
+            </div>
+            <input type="range" id="s-spread" min="0.3" max="2.0" step="0.01" value="1.0">
+            <div class="param-hint">决定子代距离中心多远，小值更像核聚变，大值更像星云扩散。</div>
+        </div>
+
+        <div class="toggle-row">
+            <span class="toggle-label">中心子代</span>
+            <button class="toggle-switch" id="t-center" type="button" aria-pressed="false"></button>
+        </div>
+        <div class="param-hint" style="margin-top:-6px;margin-bottom:14px;">在母体中心再生出一个缩小副本，画面会更浓密。</div>
+
+        <div class="toggle-row">
+            <span class="toggle-label">交替镜像翻转</span>
+            <button class="toggle-switch" id="t-mirror" type="button" aria-pressed="false"></button>
+        </div>
+        <div class="param-hint" style="margin-top:-6px;">奇偶层左右镜像，能强化万花筒和对称法阵的观感。</div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">④ 动态参数</div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">全局自转速度</span>
+                <span class="param-val" id="v-spin">0.24</span>
+            </div>
+            <input type="range" id="s-spin" min="0" max="2.0" step="0.01" value="0.24">
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">呼吸脉动强度</span>
+                <span class="param-val" id="v-pulse">0.06</span>
+            </div>
+            <input type="range" id="s-pulse" min="0" max="0.3" step="0.01" value="0.06">
+            <div class="param-hint">给每层尺寸附加轻微起伏，让图形不只是静止堆叠。</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">⑤ 色彩基因</div>
+
+        <div class="color-row">
+            <input type="color" id="colorPicker" value="#7df1ff">
+            <div>
+                <div class="param-label">主色相</div>
+                <div class="param-hint" style="margin-top:2px;">发光、背景和深层渐变都会跟随这个色相统一漂移。</div>
+            </div>
+        </div>
+
+        <div class="param-row">
+            <div class="param-header">
+                <span class="param-label">色相偏移速率</span>
+                <span class="param-val" id="v-hueShift">22</span>
+            </div>
+            <input type="range" id="s-hueShift" min="0" max="60" step="1" value="22">
+            <div class="param-hint">数值越高，层与层之间的虹彩差异越明显。</div>
+        </div>
+
+        <div class="queue-label">快捷调色盘</div>
+        <div class="palette-row" id="paletteRow"></div>
+
+        <div class="performance-note" id="performance-note">
+            当前节点预算充足，画面会使用完整辉光、背景星尘和叶端火花。
+        </div>
+    </div>
+
+    <div class="footer-tips">
+        <b>操作提示：</b>先点一个预设建立气质，再去改图形队列和参数。拖拽队列能直接改变每层使用的形状顺序，通常比单独拉一个参数更快得到"好看"的结果。
+    </div>
+</aside>
+
+<!-- 设置按钮 & 面板 -->
+<button id="guide-btn" type="button" title="当前预设说明">说明</button>
+<button id="settings-btn" type="button" title="渲染设置">⚙</button>
+<div id="settings-panel">
+    <h3>渲染效果开关</h3>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">辉光后处理</span>
+        <button class="toggle-switch" id="fx-glow" type="button"></button>
+    </div>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">背景星云</span>
+        <button class="toggle-switch" id="fx-nebula" type="button"></button>
+    </div>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">背景星尘</span>
+        <button class="toggle-switch" id="fx-stars" type="button"></button>
+    </div>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">渐变填充</span>
+        <button class="toggle-switch" id="fx-gradient" type="button"></button>
+    </div>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">描边装饰</span>
+        <button class="toggle-switch" id="fx-stroke" type="button"></button>
+    </div>
+    <div class="fx-toggle">
+        <span class="fx-toggle-label">场景边框</span>
+        <button class="toggle-switch" id="fx-frame" type="button"></button>
+    </div>
+</div>
+<div id="fps-counter">-- FPS</div>
+
+<div id="guide-modal" aria-hidden="true">
+    <div class="guide-card" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+        <div class="guide-head">
+            <div>
+                <span class="guide-kicker">Preset Notes</span>
+                <h2 class="guide-title" id="guide-title">预设说明</h2>
+                <p class="guide-subtitle" id="guide-subtitle"></p>
+            </div>
+            <button class="guide-close" id="guide-close" type="button" aria-label="关闭说明">&times;</button>
+        </div>
+        <div class="guide-grid">
+            <div class="guide-panel">
+                <h3>视觉特点</h3>
+                <p id="guide-character"></p>
+            </div>
+            <div class="guide-panel">
+                <h3>适合的互动方式</h3>
+                <p id="guide-interaction"></p>
+            </div>
+            <div class="guide-panel">
+                <h3>影响最大的参数</h3>
+                <ul class="guide-list" id="guide-params"></ul>
+            </div>
+            <div class="guide-panel">
+                <h3>最佳使用建议</h3>
+                <ul class="guide-list" id="guide-best"></ul>
+            </div>
+        </div>
+        <div class="guide-panel">
+            <h3>客户沟通建议</h3>
+            <p id="guide-client"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// 性能架构说明
+// ══════════════════════════════════════════════════════════════
+// 核心策略：离屏缓冲 (Offscreen Canvas Caching)
+//
+// 旧架构：每帧 draw() → 递归遍历数千节点 → 每节点 shadowBlur + gradient → 极卡
+// 新架构：
+//   1. 分形图案 → 渲染到 fractalBuffer (离屏画布)，仅在参数变化时重绘
+//   2. 背景星尘 → 渲染到 bgBuffer (离屏画布)，仅在窗口resize时重绘
+//   3. 每帧 draw() 仅做：清屏 + 贴 bgBuffer + 旋转贴 fractalBuffer
+//   4. shadowBlur 从每帧渲染中完全移除，改为一次性预烘焙到缓冲区
+//
+// 结果：无论分形有多少节点，主循环恒定 <1ms，稳定 60fps
+// ══════════════════════════════════════════════════════════════
+
+const SHAPE_META = {
+    triangle: { name: '三角形', branches: 3 },
+    circle:   { name: '圆形',   branches: 4 },
+    square:   { name: '正方形', branches: 4 },
+    pentagon: { name: '五边形', branches: 5 },
+    hexagon:  { name: '六边形', branches: 6 },
+    star5:    { name: '五角星', branches: 5 },
+    cross4:   { name: '四芒星', branches: 4 },
+    flower:   { name: '樱花瓣', branches: 5 }
+};
+
+const PALETTES = [
+    '#7df1ff', '#a968ff', '#ff6b8e', '#ffba52', '#6effa7',
+    '#9fe4ff', '#ffd6f5', '#d3ff6f', '#7ca3ff', '#ff8f66'
+];
+
+const DEFAULT_STYLE = {
+    mode: 'radial', maxBranches: null, branchFloor: 0, arcDeg: 360,
+    directionDeg: -90, offsetXScale: 1, offsetYScale: 1, lift: 0,
+    swayDeg: 0, radiusScaleDesktop: 0.31, radiusScaleMobile: 0.24,
+    centerYBias: 0.53, alternateRotation: 0, branchJitterDeg: 0
+};
+
+const PRESETS = [
+    { id:'nebula', name:'星云晶花', desc:'冷色虹辉 · 适合第一眼吸引', color:'#7df1ff', engine:'radial',
+      shapes:['triangle','flower','circle'],
+      params:{depth:5,scale:0.49,branches:0,layerRot:12,spiral:0.16,spread:1.12,center:false,mirror:false,spin:0.22,pulse:0.05,hueShift:14}, layout:{} },
+    { id:'mandala', name:'法阵绽放', desc:'高对称度 · 法阵与万花筒', color:'#ff8ddd', engine:'radial', hidden:true,
+      shapes:['star5','circle','cross4'],
+      params:{depth:5,scale:0.44,branches:0,layerRot:29,spiral:-0.06,spread:0.94,center:true,mirror:true,spin:0.12,pulse:0.04,hueShift:18}, layout:{alternateRotation:12} },
+    { id:'coral', name:'珊瑚脉络', desc:'暖色扩散 · 海底枝状群落', color:'#ff8f66', engine:'coral', hidden:true,
+      shapes:['flower','circle','star5'],
+      params:{depth:6,scale:0.7,branches:3,layerRot:0,spiral:0.12,spread:1.08,center:false,mirror:false,spin:0.04,pulse:0.03,hueShift:14},
+      layout:{maxBranches:3,arcDeg:44,radiusScaleDesktop:0.18,radiusScaleMobile:0.15,centerYBias:0.76,branchJitterDeg:4.5,swayDeg:3} },
+    { id:'prism', name:'棱镜风暴', desc:'高张力放射 · 强烈视觉冲击', color:'#a968ff', engine:'radial',
+      shapes:['hexagon','triangle','square'],
+      params:{depth:5,scale:0.42,branches:7,layerRot:24,spiral:0.24,spread:1.38,center:false,mirror:true,spin:0.32,pulse:0.05,hueShift:28}, layout:{branchJitterDeg:2} },
+    { id:'tree', name:'分形树', desc:'经典分形 · 枝干递归 + 叶端组合', color:'#8eea7d', engine:'tree',
+      shapes:['flower','circle','star5'],
+      params:{depth:7,scale:0.74,branches:2,layerRot:0,spiral:0.06,spread:1.12,center:false,mirror:false,spin:0,pulse:0.02,hueShift:10},
+      layout:{mode:'tree',maxBranches:3,arcDeg:28,directionDeg:-90,offsetXScale:1,offsetYScale:1,lift:0.4,swayDeg:6,radiusScaleDesktop:0.13,radiusScaleMobile:0.11,centerYBias:0.82,branchJitterDeg:1.6} },
+    { id:'snowflake', name:'分形雪花', desc:'Koch 递归 · 冰晶边界更锋利', color:'#b4e7ff', engine:'koch',
+      shapes:['hexagon','cross4','circle'],
+      params:{depth:5,scale:0.49,branches:0,layerRot:0,spiral:0.04,spread:1.0,center:false,mirror:false,spin:0.12,pulse:0.02,hueShift:10},
+      layout:{mode:'snowflake',maxBranches:6,branchFloor:6,arcDeg:360,directionDeg:-90,offsetXScale:1,offsetYScale:1,radiusScaleDesktop:0.31,radiusScaleMobile:0.24,centerYBias:0.52,alternateRotation:30,branchJitterDeg:1.5} },
+    { id:'fern', name:'蕨类生长', desc:'IFS 迭代 · 生命感点云', color:'#6effa7', engine:'fern',
+      shapes:['circle','flower'],
+      params:{depth:6,scale:0.55,branches:0,layerRot:0,spiral:0.0,spread:1.0,center:false,mirror:false,spin:0.0,pulse:0.0,hueShift:8}, layout:{centerYBias:0.6} },
+    { id:'phyllo', name:'斐波那契花盘', desc:'黄金角排布 · 花盘/种子涌现', color:'#ffba52', engine:'phyllotaxis',
+      shapes:['circle','star5','flower'],
+      params:{depth:6,scale:0.42,branches:0,layerRot:0,spiral:0.16,spread:1.18,center:false,mirror:false,spin:0.1,pulse:0.02,hueShift:18}, layout:{centerYBias:0.54} }
+];
+
+const PRESET_GUIDES = {
+    nebula: {
+        subtitle: '这个我建议放在入口位，基本不挑输入，观众一上手就容易做出好看的结果。',
+        character: '这张图的重点就是发光、层次和颜色流动感，不是让人去辨认某一个几何形本身。所以它天然比较稳，也比较适合做“第一眼吸引”。',
+        interaction: '这个模式可以放心让观众改颜色、换 1 到 3 个图案，再稍微动一点旋转。它对输入比较宽容，不容易一改就崩。',
+        params: [
+            '“色相偏移”和“主色相”决定整体气质，最容易快速出效果。',
+            '“层间旋转角”会直接改变旋涡感和法阵感。',
+            '“深度”提升后会明显更密，但超过 6 级后收益开始降低。'
+        ],
+        best: [
+            '图案建议控制在 2 到 3 个，再多就容易碎。',
+            '颜色优先用冷青、蓝紫、粉紫，这样最容易出高级感。',
+            '如果是公开互动，我建议把复杂参数先收起来，只给颜色和图案队列。'
+        ],
+        client: '如果客户想强调“观众自己参与了创作”，这个预设是最适合拿出来举例的。原因很简单，它既能让观众改出差异，又不太容易把画面改丑。'
+    },
+    mandala: {
+        subtitle: '这个模式的价值就是对称和秩序感，所以我不建议让观众在这里乱加图案。',
+        character: '它好看的地方是法阵感和万花筒感，说白了就是结构要整。只要图案一杂，那个高级感马上就没了。',
+        interaction: '这个模式更适合做“有限输入”。让观众选少量高辨识度图案可以，但不适合完全放开。',
+        params: [
+            '“层间旋转角”是核心控制项，决定法阵和万花筒的张力。',
+            '“交替镜像翻转”会明显增强对称感。',
+            '“中心子代”开启后会更像宗教纹章或徽记。'
+        ],
+        best: [
+            '图案建议最多 2 个，而且最好是星形、圆形这种干净的图案。',
+            '高饱和粉紫、洋红、蓝紫最容易出那种仪式感。',
+            '这个模式不适合玩图案堆叠，不然很快就会变成拼贴。'
+        ],
+        client: '跟客户讲可以直接一点：这种对称型算法，不适合“任意图案自由组合”。如果想要画面稳定高级，就必须接受一定的约束。'
+    },
+    coral: {
+        subtitle: '这个模式现在重点是“像珊瑚”，不是“让几何图案铺满全屏”。',
+        character: '我这里把它做成了从底部往上长的枝状群落。真正决定它像不像珊瑚的是骨架和分叉，图案更适合挂在末端当珊瑚虫或者花苞。',
+        interaction: '这个模式适合让观众参与末端装饰，不适合让图案接管骨架。图案一多，珊瑚的有机感就会很快被冲掉。',
+        params: [
+            '“深度”决定枝状群落的复杂度，是珊瑚观感的第一控制项。',
+            '“分裂数覆写”会改变群落密度，但超过 3 后容易变脏。',
+            '“扩散半径比”和“螺旋因子”只适合小范围调，不适合完全放开给观众。'
+        ],
+        best: [
+            '图案建议最多 1 到 2 个，优先圆形、花瓣、星形这种轮廓柔和的。',
+            '颜色更适合橙、珊瑚粉、暖红，不适合荧光绿。',
+            '如果要给公众玩，我建议把枝干参数锁住，只开放颜色和末端图案。'
+        ],
+        client: '这个案例很适合拿来跟客户解释边界：如果既要像珊瑚，又要保证好看，那骨架就必须由系统控制，观众输入更适合放在末端装饰层。'
+    },
+    prism: {
+        subtitle: '这个模式追求的就是冲击力，所以我不建议把交互做得太散。',
+        character: '它不是生长型画面，它是爆发型画面。真正有价值的是方向感、速度感和棱角，而不是观众塞进去多少图案。',
+        interaction: '这个模式可以让观众少量参与，但更适合做“选一个风格方向”，不适合深度自定义。',
+        params: [
+            '“分裂数覆写”决定是否有强烈爆炸感。',
+            '“层间旋转角”和“螺旋因子”决定速度感。',
+            '“扩散半径比”决定是压缩成核心，还是炸成外扩风暴。'
+        ],
+        best: [
+            '图案最好就用三角形、六边形、正方形这种硬边几何。',
+            '高对比冷暖色最容易出“棱镜能量”的感觉。',
+            '适合快节奏体验，不适合让观众慢慢调很多项。'
+        ],
+        client: '这个模式可以直接告诉客户：有些算法的价值就是强风格输出，不适合无限制输入。要高完成度，就要接受一部分参数由设计方先收住。'
+    },
+    tree: {
+        subtitle: '这棵树要想看起来像树，骨架就必须由算法来管，不能让图案把树干结构带跑。',
+        character: '树好不好看，主要看主干、分叉角和枝长衰减。图案在这里更适合挂在叶端，做成叶簇、果实或者发光点。',
+        interaction: '这个模式最适合让观众改颜色和叶端图案，不适合让观众深度控制树干结构。',
+        params: [
+            '“深度”决定树冠复杂度，是最重要参数。',
+            '“基因收缩率”决定树枝衰减速度，影响真实感。',
+            '“分裂数覆写”只建议在 2 到 3 之间，过高会失去树感。'
+        ],
+        best: [
+            '叶端图案建议控制在 1 到 3 个，优先圆形、花瓣、星形。',
+            '绿色、金黄、橙红都比较合适，对应不同季节感。',
+            '汇报的时候最好直接说：观众输入影响的是叶冠，不是树干骨架。'
+        ],
+        client: '这类模式最适合拿来讲清楚一件事：想让树看起来像树，骨架必须算法主导。要是连树干都交给用户图案，效果基本就保不住了。'
+    },
+    snowflake: {
+        subtitle: '这个模式我会直接跟客户说清楚：它主要吃参数，不吃图案。',
+        character: '雪花好看，靠的是 Koch 边界和六向对称，不是靠图案堆出来的。图案在这里就是点缀一下晶核和边缘，参与度很浅。',
+        interaction: '这个模式不适合做“观众选很多图案”的互动。真要做交互，重点应该放在颜色、深度和一点点旋转上。',
+        params: [
+            '“深度”是决定雪花细节和锋利度的核心参数。',
+            '“主色相”会直接影响它是冰蓝、极光还是玻璃体质感。',
+            '“自转速度”只适合轻微开，不适合过快。'
+        ],
+        best: [
+            '图案建议只留 1 个，最多 2 个，而且最好是圆形、四芒星、六边形这种冷感几何。',
+            '颜色优先冷白、冰蓝、浅青，别把图案输入当成主卖点。',
+            '这个模式最合适的体验是调颜色和深度，不是自由拼图案。'
+        ],
+        client: '这块可以说得再直接一点：在雪花里，图案选择作用不大，参数影响远大于图案影响。所以它更适合做成品展示，不适合拿来当“观众自由选图案”的主案例。'
+    },
+    fern: {
+        subtitle: '这个模式也一样，主要看参数，不是看图案。',
+        character: '蕨类之所以像植物，是因为 IFS 点云本身把轮廓长出来了。图案在这里更多只是叶片上的一点点装饰，作用很浅。',
+        interaction: '这个模式不适合让观众随便选很多图案。图案一多，整个植物轮廓马上就会脏掉。',
+        params: [
+            '“深度”会直接增加叶片丰富度。',
+            '“主色相”是影响观感最明显的输入项。',
+            '这类算法对“分裂数覆写”并不敏感，不建议作为主交互。'
+        ],
+        best: [
+            '我建议这里只开放颜色，图案最多开放 1 个，甚至可以不开放。',
+            '绿色、青绿、冷白最自然，高饱和杂色通常只会把效果拉差。',
+            '从体验上看，它更适合做自动生成的数学植物，不适合强调观众图案输入。'
+        ],
+        client: '这类预设跟客户讲的时候不用绕：图案输入不是主要价值，参数和颜色才是。要是客户坚持做强图案参与，我建议不要把蕨类放在主流程里。'
+    },
+    phyllo: {
+        subtitle: '这个是少数可以把图案参与做得比较明显的模式，但骨架还是参数在管。',
+        character: '花盘本身就有花心和花瓣的语义，所以图案融进去会比较自然。相比雪花和蕨类，它更适合拿来承接“观众输入图案”这件事。',
+        interaction: '如果客户一定要突出图案参与，我会优先推这个模式。但也别放太开，图案一多，花盘会从有机秩序变成拼贴噪声。',
+        params: [
+            '“扩散半径比”和“螺旋因子”对花盘观感影响最大。',
+            '“主色相”决定它是向日葵、星盘还是宇宙花。',
+            '“深度”影响种子数量，但不建议无限加大。'
+        ],
+        best: [
+            '图案支持 2 到 3 个混合，再多基本就开始乱了。',
+            '圆形、五角星、花瓣最合适，硬边几何会削弱花盘感。',
+            '如果客户一定要突出图案输入，优先推荐这个，不要推雪花或蕨类。'
+        ],
+        client: '这个可以作为你跟客户沟通时的主推荐：它确实能让观众明显感到“我输入的图案参与了画面”，但即便这样，真正决定成败的还是参数和默认构图，不是无限制放开图案自由度。'
+    }
+};
+
+// ══════════════════════════════════════════════════
+// 全局状态
+// ══════════════════════════════════════════════════
+const state = {
+    selectedShapes: ['triangle','flower','circle'],
+    baseColor: '#7df1ff',
+    activePreset: 'nebula',
+    engine: 'radial',
+    dismissedGuidePresets: new Set(),
+    params: { depth:5,scale:0.49,branches:0,layerRot:12,spiral:0.16,spread:1.12,center:false,mirror:false,spin:0.22,pulse:0.05,hueShift:14 },
+    layout: { ...DEFAULT_STYLE }
+};
+
+const DRIFT_PARAM_KEYS = ['scale', 'spiral', 'spread', 'spin', 'pulse'];
+const DRIFT_BUDGET_KEYS = new Set(['depth', 'branches']);
+const DRIFT_SCENES = {
+    nebula: [
+        { scale: 0.48, spiral: 0.12, spread: 1.08, spin: 0.055, pulse: 0.04 },
+        { scale: 0.43, spiral: 0.23, spread: 1.22, spin: 0.085, pulse: 0.055 },
+        { scale: 0.53, spiral: -0.03, spread: 0.95, spin: 0.04, pulse: 0.028 }
+    ],
+    mandala: [
+        { scale: 0.44, spiral: -0.04, spread: 0.98, spin: 0.03, pulse: 0.026 },
+        { scale: 0.41, spiral: 0.02, spread: 0.9, spin: 0.045, pulse: 0.034 },
+        { scale: 0.46, spiral: -0.07, spread: 1.03, spin: 0.026, pulse: 0.022 }
+    ],
+    coral: [
+        { scale: 0.68, spiral: 0.06, spread: 0.98, spin: 0.006, pulse: 0.02 },
+        { scale: 0.72, spiral: 0.14, spread: 1.08, spin: 0.014, pulse: 0.03 },
+        { scale: 0.66, spiral: 0.1, spread: 1.15, spin: 0.009, pulse: 0.024 }
+    ],
+    prism: [
+        { scale: 0.42, spiral: 0.18, spread: 1.2, spin: 0.065, pulse: 0.03 },
+        { scale: 0.39, spiral: 0.28, spread: 1.36, spin: 0.1, pulse: 0.04 },
+        { scale: 0.47, spiral: 0.08, spread: 1.07, spin: 0.055, pulse: 0.024 }
+    ],
+    tree: [
+        { scale: 0.74, spiral: 0.04, spread: 1.05, spin: 0, pulse: 0.012 },
+        { scale: 0.7, spiral: 0.09, spread: 1.15, spin: 0, pulse: 0.02 },
+        { scale: 0.76, spiral: 0.03, spread: 0.98, spin: 0, pulse: 0.015 }
+    ],
+    snowflake: [
+        { scale: 0.48, spiral: 0.02, spread: 1.0, spin: 0.018, pulse: 0.015 },
+        { scale: 0.5, spiral: 0.06, spread: 1.02, spin: 0.038, pulse: 0.022 },
+        { scale: 0.46, spiral: 0.0, spread: 0.96, spin: 0.016, pulse: 0.01 }
+    ],
+    fern: [
+        { scale: 0.55, spiral: 0.0, spread: 1.0, spin: 0.0, pulse: 0.0 },
+        { scale: 0.57, spiral: 0.02, spread: 1.04, spin: 0.0, pulse: 0.0 },
+        { scale: 0.52, spiral: -0.02, spread: 0.96, spin: 0.0, pulse: 0.0 }
+    ],
+    phyllo: [
+        { scale: 0.42, spiral: 0.12, spread: 1.08, spin: 0.02, pulse: 0.012 },
+        { scale: 0.44, spiral: 0.2, spread: 1.22, spin: 0.042, pulse: 0.022 },
+        { scale: 0.4, spiral: 0.1, spread: 1.12, spin: 0.018, pulse: 0.016 }
+    ]
+};
+const driftState = {
+    enabled: true,
+    lastTickMs: 0,
+    cycleMs: 26000,
+    uiSyncMs: 0,
+    startMs: 0
+};
+
+const scene = {
+    stars: [],
+    budget: null,
+    baseHue: 0,
+    limits: { depthMax:6, branchMax:10 },
+    // ── 离屏缓冲区 ──
+    fractalBuffer: null,    // 分形图案的离屏画布
+    bgBuffer: null,         // 背景的离屏画布
+    fractalDirty: true,     // 参数变化标志
+    bgDirty: true,          // 背景需要重绘标志
+    lastRenderTime: 0,      // 上次分形重绘的时间戳
+    renderThrottleMs: 80,   // 拖拽滑块时的重绘节流（ms）
+    spriteCache: new Map(),
+    kochCache: new Map()
+};
+
+// ── 效果开关（默认全部关闭，用户可通过设置按钮打开对比）──
+const fx = {
+    glow: true,       // 辉光后处理（blur叠加）
+    nebula: true,     // 背景星云光球
+    stars: true,      // 背景星尘粒子
+    gradient: true,   // 分形节点渐变填充
+    stroke: true,     // 分形节点描边
+    frame: false      // 场景边框虚线
+};
+
+function getEngine() {
+    // Prefer explicit preset engine; fall back to old layout-based tree flag.
+    return state.engine || (state.layout.mode === 'tree' ? 'tree' : 'radial');
+}
+
+function engineShouldAutoRotate(engine) {
+    return engine === 'radial' || engine === 'koch' || engine === 'phyllotaxis';
+}
+
+function smoothstep01(t) {
+    const clamped = Math.max(0, Math.min(1, t));
+    return clamped * clamped * (3 - 2 * clamped);
+}
+
+function lerpNumber(a, b, t) {
+    return a + (b - a) * t;
+}
+
+function applyControlledDrift(clockTime) {
+    if (!driftState.enabled || !state.activePreset) return;
+    if (document.hidden) return;
+
+    const scenes = DRIFT_SCENES[state.activePreset];
+    if (!scenes || scenes.length < 2) return;
+
+    const now = performance.now();
+    if (!driftState.startMs) driftState.startMs = now;
+    if (now - driftState.lastTickMs < 180) return;
+
+    const totalSpan = driftState.cycleMs * scenes.length;
+    const elapsedMs = now - driftState.startMs;
+    const phase = (elapsedMs % totalSpan) / driftState.cycleMs;
+    const fromIndex = Math.floor(phase) % scenes.length;
+    const toIndex = (fromIndex + 1) % scenes.length;
+    const t = smoothstep01(phase - fromIndex);
+    const fromScene = scenes[fromIndex];
+    const toScene = scenes[toIndex];
+
+    let changed = false;
+    let needsBudgetRefresh = false;
+    for (const key of DRIFT_PARAM_KEYS) {
+        const fromValue = fromScene[key] ?? state.params[key];
+        const toValue = toScene[key] ?? fromValue;
+        const nextValue = lerpNumber(fromValue, toValue, t);
+        if (Math.abs(nextValue - state.params[key]) > 0.0001) {
+            state.params[key] = nextValue;
+            changed = true;
+            if (DRIFT_BUDGET_KEYS.has(key)) needsBudgetRefresh = true;
+        }
+    }
+
+    if (changed) {
+        if (needsBudgetRefresh) {
+            refreshDerivedState(false);
+        } else {
+            scene.fractalDirty = true;
+        }
+        if (now - driftState.uiSyncMs > 900) {
+            syncParameterControls();
+            driftState.uiSyncMs = now;
+        }
+    }
+
+    driftState.lastTickMs = now;
+}
+
+// ── FPS 追踪 ──
+const fpsTracker = { frames: 0, lastTime: 0, display: 0 };
+
+const sliders = [
+    ['s-depth','v-depth','depth', v => `${v} 级`],
+    ['s-scale','v-scale','scale', v => Number(v).toFixed(2)],
+    ['s-branches','v-branches','branches', v => Number(v)===0?'自动':v],
+    ['s-layerRot','v-layerRot','layerRot', v => `${v}°`],
+    ['s-spiral','v-spiral','spiral', v => Number(v).toFixed(2)],
+    ['s-spread','v-spread','spread', v => Number(v).toFixed(2)],
+    ['s-spin','v-spin','spin', v => Number(v).toFixed(2)],
+    ['s-pulse','v-pulse','pulse', v => Number(v).toFixed(2)],
+    ['s-hueShift','v-hueShift','hueShift', v => v]
+];
+
+let dragSrcIdx = null;
+
+// ══════════════════════════════════════════════════
+// 纯数学颜色转换（不创建任何 p5 对象）
+// ══════════════════════════════════════════════════
+function hsbToRgbaFast(h, s, b, a) {
+    h = ((h % 360) + 360) % 360;
+    s /= 100; b /= 100;
+    const c = b * s, x = c * (1 - Math.abs(((h/60)%2)-1)), m = b - c;
+    let r,g,bl;
+    if(h<60){r=c;g=x;bl=0}else if(h<120){r=x;g=c;bl=0}else if(h<180){r=0;g=c;bl=x}
+    else if(h<240){r=0;g=x;bl=c}else if(h<300){r=x;g=0;bl=c}else{r=c;g=0;bl=x}
+    return `rgba(${(r+m)*255+.5|0},${(g+m)*255+.5|0},${(bl+m)*255+.5|0},${a})`;
+}
+
+function hexToHue(hex) {
+    const r=parseInt(hex.slice(1,3),16)/255, g=parseInt(hex.slice(3,5),16)/255, b=parseInt(hex.slice(5,7),16)/255;
+    const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+    if(d===0) return 0;
+    let h;
+    if(mx===r) h=60*(((g-b)/d)%6); else if(mx===g) h=60*((b-r)/d+2); else h=60*((r-g)/d+4);
+    return ((h%360)+360)%360;
+}
+
+function mapRange(v, a, b, c, d) {
+    const t = Math.max(0, Math.min(1, (v-a)/(b-a)));
+    return c + t*(d-c);
+}
+
+// ══════════════════════════════════════════════════
+// p5.js 入口
+// ══════════════════════════════════════════════════
+function setup() {
+    const canvas = createCanvas(windowWidth, windowHeight);
+    canvas.position(0,0);
+    canvas.style('display','block');
+    canvas.style('z-index','0');
+    colorMode(HSB, 360, 100, 100, 1);
+    angleMode(RADIANS);
+    pixelDensity(Math.min(window.devicePixelRatio || 1, 1.5));
+
+    // 创建离屏缓冲区
+    rebuildBuffers();
+    buildStarfield();
+    renderPresets();
+    bindUI();
+    renderQueue();
+    renderPalette();
+    applyPreset('nebula');
+    bindSettings();
+    fpsTracker.lastTime = performance.now();
+}
+
+function rebuildBuffers() {
+    // 分形缓冲区：足够大以容纳旋转后的对角线
+    const maxDim = Math.max(width, height);
+    const bufSize = Math.ceil(maxDim * 1.5); // 留旋转余量
+
+    if (scene.fractalBuffer) scene.fractalBuffer.remove();
+    scene.fractalBuffer = createGraphics(bufSize, bufSize);
+    scene.fractalBuffer.pixelDensity(1);
+
+    if (scene.bgBuffer) scene.bgBuffer.remove();
+    scene.bgBuffer = createGraphics(width, height);
+    scene.bgBuffer.pixelDensity(1);
+
+    scene.fractalDirty = true;
+    scene.bgDirty = true;
+}
+
+// ══════════════════════════════════════════════════
+// ★ 主循环：极致轻量 — 只做图像合成
+// ══════════════════════════════════════════════════
+function draw() {
+    const clockTime = millis() * 0.001;
+    applyControlledDrift(clockTime);
+    const baseHue = scene.baseHue;
+    const budget = scene.budget;
+    if (!budget) return;
+
+    // ── FPS 计算 ──
+    fpsTracker.frames++;
+    const now = performance.now();
+    if (now - fpsTracker.lastTime >= 500) {
+        fpsTracker.display = Math.round(fpsTracker.frames / ((now - fpsTracker.lastTime) / 1000));
+        fpsTracker.frames = 0;
+        fpsTracker.lastTime = now;
+        const el = document.getElementById('fps-counter');
+        el.textContent = `${fpsTracker.display} FPS`;
+        el.className = fpsTracker.display >= 50 ? '' : fpsTracker.display >= 30 ? 'warn' : 'bad';
+    }
+
+    // ── 1. 按需重绘背景缓冲 ──
+    if (scene.bgDirty) {
+        renderBgToBuffer(baseHue, budget);
+        scene.bgDirty = false;
+    }
+
+    // ── 2. 按需重绘分形缓冲（含节流）──
+    if (scene.fractalDirty) {
+        const tn = performance.now();
+        if (tn - scene.lastRenderTime > scene.renderThrottleMs) {
+            renderFractalToBuffer(baseHue, budget, clockTime);
+            scene.fractalDirty = false;
+            scene.lastRenderTime = tn;
+        }
+    }
+
+    // ── 3. 主画布合成（极快：只是贴两张图片）──
+    const ctx = drawingContext;
+    const sceneBox = getSceneViewport();
+    const engine = getEngine();
+    const shouldRotate = engineShouldAutoRotate(engine);
+
+    // 贴背景
+    ctx.drawImage(scene.bgBuffer.canvas, 0, 0);
+
+    // 贴分形（带旋转）
+    const centerX = sceneBox.x + sceneBox.w * 0.5;
+    const centerY = sceneBox.y + sceneBox.h * state.layout.centerYBias;
+    const fb = scene.fractalBuffer;
+    const fbW = fb.width, fbH = fb.height;
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    if (shouldRotate) {
+        ctx.rotate(clockTime * 0.135 * state.params.spin * 6.5);
+    }
+    if (state.params.pulse > 0) {
+        const ps = 1 + Math.sin(clockTime * 2.1) * state.params.pulse * 0.5;
+        ctx.scale(ps, ps);
+    }
+    ctx.drawImage(fb.canvas, -fbW/2, -fbH/2);
+    ctx.restore();
+
+    // 场景边框
+    if (fx.frame) drawSceneFrame(ctx, sceneBox, baseHue);
+}
+
+// ══════════════════════════════════════════════════
+// 背景渲染 → bgBuffer（一次性，resize时重绘）
+// ══════════════════════════════════════════════════
+function renderBgToBuffer(baseHue) {
+    const bg = scene.bgBuffer;
+    const ctx = bg.drawingContext;
+    const w = bg.width, h = bg.height;
+
+    // 清屏
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = hsbToRgbaFast((baseHue+240)%360, 40, 5, 1);
+    ctx.fillRect(0, 0, w, h);
+
+    // 星云光球（受 fx.nebula 控制）
+    if (fx.nebula) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 4; i++) {
+            const nx = 0.16 + i*0.18, ny = 0.18 + (i%2)*0.36;
+            const x = w * nx, y = h * ny;
+            const radius = Math.min(w, h) * (0.22 + i*0.05);
+            const hA = (baseHue + i*28) % 360, hB = (hA+46) % 360;
+            const grad = ctx.createRadialGradient(x, y, radius*0.06, x, y, radius);
+            grad.addColorStop(0, hsbToRgbaFast(hA, 78, 96, 0.14));
+            grad.addColorStop(0.5, hsbToRgbaFast(hB, 72, 58, 0.09));
+            grad.addColorStop(1, hsbToRgbaFast(hB, 60, 8, 0));
+            ctx.fillStyle = grad;
+            ctx.fillRect(x-radius, y-radius, radius*2, radius*2);
+        }
+        ctx.restore();
+    }
+
+    // 星尘（受 fx.stars 控制）
+    if (fx.stars) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        for (const star of scene.stars) {
+            ctx.beginPath();
+            ctx.fillStyle = hsbToRgbaFast((baseHue + star.hueOffset + 360)%360, 24, 98, star.alphaBase);
+            ctx.arc(star.x * w, star.y * h, Math.max(0.3, star.size), 0, Math.PI*2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    // 暗角
+    ctx.save();
+    const vignette = ctx.createRadialGradient(w*0.52, h*0.56, Math.min(w,h)*0.14, w*0.52, h*0.56, Math.max(w,h)*0.82);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(2,4,10,0.72)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+}
+
+// ══════════════════════════════════════════════════
+// ★ 分形渲染 → fractalBuffer（仅参数变化时重绘）
+// ══════════════════════════════════════════════════
+function renderFractalToBuffer(baseHue, budget, clockTime) {
+    const fb = scene.fractalBuffer;
+    const ctx = fb.drawingContext;
+    const fbW = fb.width, fbH = fb.height;
+    const cx = fbW / 2, cy = fbH / 2;
+
+    ctx.clearRect(0, 0, fbW, fbH);
+
+    const sceneBox = getSceneViewport();
+    const initialRadius = Math.max(42, Math.min(sceneBox.w, sceneBox.h) *
+        (windowWidth < 920 ? state.layout.radiusScaleMobile : state.layout.radiusScaleDesktop));
+
+    const engine = getEngine();
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    if (engine === 'tree') {
+        // The main canvas already places the whole buffer using centerYBias.
+        // Keep the tree root near the buffer center so it stays inside the viewport.
+        renderFractalTree(ctx, 0, 0, initialRadius * 1.7, budget.effectiveDepth, state.params.scale, baseHue, 0, budget.qualityMode, clockTime);
+    } else if (engine === 'coral') {
+        renderCoralColony(ctx, initialRadius * 1.12, budget.effectiveDepth, baseHue, budget.qualityMode, clockTime);
+    } else if (engine === 'koch') {
+        renderKochSnowflake(ctx, initialRadius * 1.05, budget.effectiveDepth, baseHue, budget.qualityMode, clockTime);
+    } else if (engine === 'fern') {
+        renderBarnsleyFern(ctx, initialRadius * 1.12, budget.effectiveDepth, baseHue, budget.qualityMode);
+    } else if (engine === 'phyllotaxis') {
+        renderPhyllotaxis(ctx, initialRadius * 1.05, budget.effectiveDepth, baseHue, budget.qualityMode, clockTime);
+    } else {
+        renderFractalRadial(ctx, 0, 0, initialRadius, budget.effectiveDepth, state.params.scale, baseHue, 0, budget.qualityMode, clockTime);
+    }
+
+    ctx.restore();
+
+    // ── 辉光后处理（受 fx.glow 控制）──
+    if (fx.glow && budget.qualityMode !== 'protected') {
+        applyBufferGlow(fb, baseHue);
+    }
+}
+
+// 一次性辉光后处理：将缓冲区模糊叠加回自身
+function applyBufferGlow(fb, baseHue) {
+    const ctx = fb.drawingContext;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.filter = 'blur(12px)';
+    ctx.globalAlpha = 0.18;
+    ctx.drawImage(fb.canvas, 0, 0);
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+}
+
+// ══════════════════════════════════════════════════
+// 径向分形渲染（直接操作 ctx，不使用 p5 指令）
+// ══════════════════════════════════════════════════
+function renderFractalRadial(ctx, x, y, radius, depthRemaining, scaleFactor, baseHue, layer, qualityMode, clockTime) {
+    const minRadius = qualityMode === 'protected' ? 2.4 : qualityMode === 'balanced' ? 1.5 : 0.9;
+    if (depthRemaining < 0.08 || radius < minRadius) return;
+
+    const shape = state.selectedShapes[layer % state.selectedShapes.length];
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    if (state.params.mirror && layer % 2 === 1) ctx.scale(-1, 1);
+
+    if (layer > 0) {
+        ctx.rotate(state.params.layerRot * Math.PI / 180 * layer);
+        if (state.layout.alternateRotation && layer % 2 === 1) {
+            ctx.rotate(state.layout.alternateRotation * Math.PI / 180);
+        }
+    }
+
+    const r = radius;
+    const fractionalFade = Math.min(1, Math.max(0, depthRemaining));
+    if (depthRemaining < 1) {
+        ctx.globalAlpha = fractionalFade;
+        const s = fractionalFade;
+        ctx.scale(s, s);
+    }
+
+    const hueValue = (baseHue + layer * state.params.hueShift + 360) % 360;
+    const brightness = Math.min(98, 48 + layer * 6.5);
+    const alphaFalloff = mapRange(layer, 0, 7, 1, 0.42);
+
+    // 绘制核心图形
+    ctx.fillStyle = fx.gradient
+        ? createGradientFast(ctx, r, hueValue, brightness, 0.9 * alphaFalloff)
+        : hsbToRgbaFast(hueValue, 74, Math.min(100, brightness+12), 0.9 * alphaFalloff);
+    traceShapePath(ctx, shape, r);
+    ctx.fill();
+
+    // 描边（受 fx.stroke 控制）
+    if (fx.stroke && r > 8) {
+        ctx.strokeStyle = hsbToRgbaFast((hueValue+22)%360, 50, Math.min(100, brightness+24), 0.18 * alphaFalloff);
+        ctx.lineWidth = Math.max(0.3, mapRange(r, 8, 240, 0.3, 2));
+        ctx.stroke();
+    }
+
+    ctx.globalAlpha = 1;
+
+    // 子代递归
+    if (depthRemaining > 0) {
+        const branches = resolveBranchCount(shape);
+        const childRadius = r * scaleFactor;
+        const baseOffset = Math.max(r - childRadius * 0.82, r * 0.18) * state.params.spread;
+        const spiralOffset = baseOffset * (1 + state.params.spiral * layer * 0.12);
+        const nextDepth = depthRemaining - 1;
+
+        const targets = resolveBranchTargets(shape, layer, branches, spiralOffset, clockTime);
+        for (let i = 0; i < targets.length; i++) {
+            renderFractalRadial(ctx, targets[i].x, targets[i].y, childRadius, nextDepth, scaleFactor, baseHue, layer+1, qualityMode, clockTime);
+        }
+
+        if (state.params.center && !(qualityMode === 'protected' && layer >= 2)) {
+            renderFractalRadial(ctx, 0, 0, childRadius*0.78, nextDepth, scaleFactor, baseHue, layer+1, qualityMode, clockTime);
+        }
+    }
+    ctx.restore();
+}
+
+// ══════════════════════════════════════════════════
+// 分形树专用引擎
+// ══════════════════════════════════════════════════
+function renderFractalTree(ctx, x, y, trunkLen, depthRemaining, scaleFactor, baseHue, layer, qualityMode, clockTime) {
+    if (depthRemaining < 0.05 || trunkLen < 1.5) return;
+
+    const layoutCfg = state.layout;
+    const maxDepth = Math.max(1, state.params.depth);
+    const progress = 1 - (depthRemaining / maxDepth);
+    const depthAlpha = Math.min(1, Math.max(0, depthRemaining));
+    const thickness = Math.max(1, trunkLen * (layer === 0 ? 0.11 : 0.095)) * depthAlpha;
+    const trunkHue = (28 + progress * 24) % 360;
+    const trunkSat = 28 + progress * 16;
+    const trunkBri = 18 + progress * 22;
+    const baseAngleDeg = (layoutCfg.arcDeg || 34) * (0.72 + state.params.spread * 0.25);
+    const baseAngle = baseAngleDeg * Math.PI / 180;
+    const swayAmt = (layoutCfg.swayDeg || 6) * Math.PI / 180;
+    const sway = Math.sin(clockTime * 0.42 + layer * 0.58 + x * 0.0025) * swayAmt * Math.min(1, layer * 0.22 + 0.18);
+    const lean = state.params.spiral * 0.16;
+    const branchCount = Math.max(2, Math.min(state.params.branches > 0 ? state.params.branches : 2, layoutCfg.maxBranches || 3));
+    const isTerminal = depthRemaining <= 1.1 || trunkLen < 12;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(sway + lean);
+
+    const endY = -trunkLen;
+    const curveX = Math.sin(clockTime * 0.3 + layer * 0.35) * trunkLen * 0.04 + lean * trunkLen * 0.55;
+    const curveY = -trunkLen * 0.52;
+
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(curveX, curveY, 0, endY);
+    ctx.strokeStyle = hsbToRgbaFast(trunkHue, trunkSat, trunkBri, 0.9 * depthAlpha);
+    ctx.lineWidth = thickness;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(curveX * 0.55, curveY * 0.9, 0, endY);
+    ctx.strokeStyle = hsbToRgbaFast((trunkHue + 8) % 360, trunkSat * 0.45, Math.min(100, trunkBri + 18), 0.22 * depthAlpha);
+    ctx.lineWidth = Math.max(0.55, thickness * 0.34);
+    ctx.stroke();
+
+    ctx.translate(0, endY);
+
+    if (isTerminal) {
+        const leafSize = Math.max(2.2, trunkLen * scaleFactor * 0.68);
+        const leafHue = (baseHue + layer * state.params.hueShift + 360) % 360;
+        const leafBri = Math.min(98, 54 + layer * 4.5);
+        const leafAlpha = depthAlpha * 0.9;
+        drawLeafCluster(ctx, leafSize, leafHue, leafBri, leafAlpha, layer, qualityMode, clockTime);
+        ctx.restore();
+        return;
+    }
+
+    const nextDepth = depthRemaining - 1;
+    const childLen = trunkLen * (scaleFactor * 0.96);
+    const asymmetry = Math.sin(clockTime * 0.27 + layer * 0.38) * 0.06;
+    const jitterBase = (layoutCfg.branchJitterDeg || 2) * Math.PI / 180;
+    const angles = [];
+
+    if (branchCount === 2) {
+        angles.push(-(baseAngle + asymmetry));
+        angles.push(baseAngle - asymmetry * 0.7);
+    } else {
+        angles.push(-(baseAngle + asymmetry));
+        angles.push(-0.08 + lean * 0.45);
+        angles.push(baseAngle - asymmetry * 0.7);
+    }
+
+    for (let i = 0; i < angles.length; i++) {
+        const jitter = Math.sin(clockTime * 0.7 + layer * 0.6 + i * 2.1) * jitterBase;
+        const angle = angles[i] + jitter;
+        const lenScale = i === 1 && angles.length === 3 ? 0.9 : (i === 0 ? 1.02 : 0.94);
+        ctx.save();
+        ctx.rotate(angle);
+        renderFractalTree(ctx, 0, 0, childLen * lenScale, nextDepth, scaleFactor, baseHue, layer + 1, qualityMode, clockTime);
+        ctx.restore();
+    }
+
+    if (state.params.center && layer < 3) {
+        ctx.save();
+        ctx.rotate(lean * 0.55);
+        renderFractalTree(ctx, 0, 0, childLen * 0.82, nextDepth - 0.15, scaleFactor, baseHue, layer + 1, qualityMode, clockTime);
+        ctx.restore();
+    }
+
+    ctx.restore();
+}
+
+function drawLeafCluster(ctx, baseSize, hueValue, brightness, alpha, layer, qualityMode, clockTime) {
+    const count = qualityMode === 'protected' ? 3 : 5;
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (let i = 0; i < count; i++) {
+        const s = shapes[(layer + i) % shapes.length];
+        const spin = (clockTime * 0.45 + layer * 0.14 + i * 1.25) * (state.params.spiral * 0.25 + 0.18);
+        const r = baseSize * (i === 0 ? 0.48 : 0.28 + i * 0.1);
+        const dx = Math.cos(spin) * baseSize * (i === 0 ? 0.08 : 0.18 + i * 0.06);
+        const dy = Math.sin(spin) * baseSize * (i === 0 ? 0.06 : 0.16 + i * 0.05) - (i === 0 ? baseSize * 0.04 : 0);
+
+        ctx.save();
+        ctx.translate(dx, dy);
+        ctx.rotate(spin * 0.85);
+        ctx.fillStyle = fx.gradient
+            ? createGradientFast(ctx, r, (hueValue + i * 10) % 360, brightness, alpha * (0.85 - i * 0.12))
+            : hsbToRgbaFast((hueValue + i * 10) % 360, 74, Math.min(100, brightness + 10), alpha * (0.85 - i * 0.12));
+        traceShapePath(ctx, s, r);
+        ctx.fill();
+        if (fx.stroke && r > 3 && qualityMode !== 'protected') {
+            ctx.strokeStyle = hsbToRgbaFast((hueValue + 22 + i * 8) % 360, 45, Math.min(100, brightness + 20), alpha * 0.18);
+            ctx.lineWidth = Math.max(0.3, r * 0.05);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // one soft fruit/light seed at the tip to make the crown feel intentional
+    ctx.beginPath();
+    ctx.fillStyle = hsbToRgbaFast((hueValue + 28) % 360, 32, Math.min(100, brightness + 22), alpha * 0.22);
+    ctx.arc(0, -baseSize * 0.08, Math.max(1.2, baseSize * 0.16), 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function renderCoralColony(ctx, radius, depthValue, baseHue, qualityMode, clockTime) {
+    const stems = qualityMode === 'protected' ? 4 : 6;
+    const depth = Math.max(2, Math.round(depthValue));
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (let i = 0; i < stems; i++) {
+        const spread = stems === 1 ? 0 : mapRange(i, 0, stems - 1, -1, 1);
+        const rootX = spread * radius * 0.34;
+        const rootY = radius * 0.5 + Math.abs(spread) * radius * 0.08;
+        const len = radius * (0.58 - Math.abs(spread) * 0.08);
+        const angle = -Math.PI / 2 + spread * 0.34 + Math.sin(clockTime * 0.22 + i) * 0.05;
+        renderCoralBranch(ctx, rootX, rootY, len, angle, depth, baseHue, 0, qualityMode, clockTime, shapes);
+    }
+
+    // seabed glow
+    const bed = ctx.createRadialGradient(0, radius * 0.56, radius * 0.08, 0, radius * 0.56, radius * 0.46);
+    bed.addColorStop(0, hsbToRgbaFast((baseHue + 8) % 360, 52, 88, 0.12));
+    bed.addColorStop(1, hsbToRgbaFast((baseHue + 24) % 360, 48, 20, 0));
+    ctx.fillStyle = bed;
+    ctx.fillRect(-radius, radius * 0.15, radius * 2, radius);
+    ctx.restore();
+}
+
+function renderCoralBranch(ctx, x, y, len, angle, depthRemaining, baseHue, layer, qualityMode, clockTime, shapes) {
+    if (depthRemaining <= 0 || len < 8) {
+        drawCoralPolyp(ctx, x, y, Math.max(2, len * 0.18), baseHue, layer, qualityMode, clockTime, shapes);
+        return;
+    }
+
+    const growth = 1 - depthRemaining / Math.max(1, state.params.depth);
+    const thickness = Math.max(1, len * (layer === 0 ? 0.1 : 0.075));
+    const hueValue = (baseHue + growth * 20 + layer * 5) % 360;
+    const brightness = 42 + growth * 22;
+    const bend = Math.sin(clockTime * 0.35 + x * 0.002 + layer * 0.6) * 0.12;
+    const endX = x + Math.cos(angle) * len;
+    const endY = y + Math.sin(angle) * len;
+    const ctrlX = x + Math.cos(angle + bend) * len * 0.48;
+    const ctrlY = y + Math.sin(angle + bend) * len * 0.48;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+    ctx.strokeStyle = hsbToRgbaFast(hueValue, 58, brightness, 0.88);
+    ctx.lineWidth = thickness;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+    ctx.strokeStyle = hsbToRgbaFast((hueValue + 14) % 360, 34, Math.min(100, brightness + 18), 0.2);
+    ctx.lineWidth = Math.max(0.5, thickness * 0.32);
+    ctx.stroke();
+
+    if (depthRemaining <= 1) {
+        drawCoralPolyp(ctx, endX, endY, Math.max(2.4, len * 0.16), baseHue, layer, qualityMode, clockTime, shapes);
+        return;
+    }
+
+    const branchCount = qualityMode === 'protected' ? 2 : Math.min(3, Math.max(2, state.params.branches || 3));
+    const baseArc = ((state.layout.arcDeg || 44) * Math.PI) / 180;
+
+    for (let i = 0; i < branchCount; i++) {
+        const spread = branchCount === 1 ? 0 : mapRange(i, 0, branchCount - 1, -0.5, 0.5);
+        const nextAngle = angle + spread * baseArc + Math.sin(clockTime * 0.6 + layer + i) * 0.08 + state.params.spiral * 0.18 * spread;
+        const nextLen = len * (state.params.scale * (i === 1 && branchCount === 3 ? 0.84 : 0.92));
+        renderCoralBranch(ctx, endX, endY, nextLen, nextAngle, depthRemaining - 1, baseHue, layer + 1, qualityMode, clockTime, shapes);
+    }
+}
+
+function drawCoralPolyp(ctx, x, y, size, baseHue, layer, qualityMode, clockTime, shapes) {
+    const count = qualityMode === 'protected' ? 3 : 5;
+    const coreHue = (baseHue + 26 + layer * 8) % 360;
+
+    for (let i = 0; i < count; i++) {
+        const angle = -Math.PI / 2 + i * (Math.PI * 2 / count) + clockTime * 0.08;
+        const shape = shapes[(layer + i) % shapes.length];
+        drawShapeStamp(
+            ctx,
+            shape,
+            x + Math.cos(angle) * size * 0.75,
+            y + Math.sin(angle) * size * 0.75,
+            size * (i === 0 ? 0.85 : 0.58),
+            (coreHue + i * 10) % 360,
+            90,
+            qualityMode === 'protected' ? 0.28 : 0.42,
+            angle * 0.8
+        );
+    }
+
+    ctx.beginPath();
+    ctx.fillStyle = hsbToRgbaFast((coreHue + 18) % 360, 34, 100, 0.32);
+    ctx.arc(x, y, Math.max(1.2, size * 0.32), 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawShapeStamp(ctx, shape, x, y, size, hueValue, brightness, alpha, rotation = 0, strokeAlpha = 0.16) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+    ctx.fillStyle = fx.gradient
+        ? createGradientFast(ctx, size, hueValue, brightness, alpha)
+        : hsbToRgbaFast(hueValue, 62, Math.min(100, brightness + 8), alpha);
+    traceShapePath(ctx, shape, size);
+    ctx.fill();
+    if (fx.stroke && size > 2.8) {
+        ctx.strokeStyle = hsbToRgbaFast((hueValue + 18) % 360, 38, Math.min(100, brightness + 18), alpha * strokeAlpha);
+        ctx.lineWidth = Math.max(0.32, size * 0.05);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawShapeRing(ctx, shapes, ringRadius, count, size, hueValue, brightness, alpha, rotationOffset = 0) {
+    for (let i = 0; i < count; i++) {
+        const angle = rotationOffset + i * (Math.PI * 2 / count);
+        const shape = shapes[i % shapes.length];
+        drawShapeStamp(
+            ctx,
+            shape,
+            Math.cos(angle) * ringRadius,
+            Math.sin(angle) * ringRadius,
+            size,
+            (hueValue + i * 8) % 360,
+            brightness,
+            alpha,
+            angle
+        );
+    }
+}
+
+function populateGuideModal(presetId) {
+    const preset = PRESETS.find(item => item.id === presetId);
+    const guide = PRESET_GUIDES[presetId];
+    if (!preset || !guide) return;
+
+    document.getElementById('guide-title').textContent = preset.name;
+    document.getElementById('guide-subtitle').textContent = guide.subtitle;
+    document.getElementById('guide-character').textContent = guide.character;
+    document.getElementById('guide-interaction').textContent = guide.interaction;
+    document.getElementById('guide-client').textContent = guide.client;
+
+    const paramsList = document.getElementById('guide-params');
+    paramsList.innerHTML = '';
+    guide.params.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        paramsList.appendChild(li);
+    });
+
+    const bestList = document.getElementById('guide-best');
+    bestList.innerHTML = '';
+    guide.best.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        bestList.appendChild(li);
+    });
+}
+
+function openGuideModal(presetId = state.activePreset) {
+    if (!presetId || !PRESET_GUIDES[presetId]) return;
+    populateGuideModal(presetId);
+    const modal = document.getElementById('guide-modal');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.getElementById('guide-btn').classList.add('active');
+}
+
+function closeGuideModal(markDismissed = true) {
+    const modal = document.getElementById('guide-modal');
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.getElementById('guide-btn').classList.remove('active');
+    if (markDismissed && state.activePreset) {
+        state.dismissedGuidePresets.add(state.activePreset);
+    }
+}
+
+// ══════════════════════════════════════════════════
+// Koch 雪花引擎（明显差异：线段分形边界）
+// ══════════════════════════════════════════════════
+function renderKochSnowflake(ctx, radius, depthValue, baseHue, qualityMode, clockTime) {
+    const depth = Math.max(0, Math.min(7, Math.round(depthValue)));
+    const points = getKochPoints(depth);
+    const hueValue = (baseHue + 10) % 360;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // 外层冰晶雾化边
+    ctx.beginPath();
+    for (let i = 0; i < points.length; i++) {
+        const px = points[i].x * radius;
+        const py = points[i].y * radius;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+
+    ctx.strokeStyle = hsbToRgbaFast((hueValue + 18) % 360, 42, 96, qualityMode === 'protected' ? 0.22 : 0.32);
+    ctx.lineWidth = qualityMode === 'protected' ? 1.1 : 1.6;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // 内层高光
+    ctx.strokeStyle = hsbToRgbaFast(hueValue, 26, 100, 0.55);
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+
+    // 中心图案核，保留冰晶感但让用户图案更参与
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
+    drawShapeStamp(ctx, shapes[0], 0, 0, Math.max(4, radius * 0.08), (hueValue + 12) % 360, 98, 0.52, clockTime * 0.22);
+    drawShapeRing(ctx, shapes, radius * 0.2, Math.min(6, shapes.length * 2), Math.max(2, radius * 0.028), (hueValue + 24) % 360, 92, 0.34, clockTime * 0.1);
+
+    // 点状结晶（沿边采样少量点，避免过密）
+    const stampEvery = depth >= 6 ? 24 : depth >= 5 ? 18 : 12;
+    for (let i = 0; i < points.length; i += stampEvery) {
+        const p = points[i];
+        const s = shapes[(i / stampEvery) % shapes.length | 0];
+        const r = Math.max(1.2, radius * 0.018) * (0.9 + Math.sin(clockTime * 0.7 + i * 0.04) * 0.25);
+        drawShapeStamp(ctx, s, p.x * radius, p.y * radius, r, (hueValue + i * 0.02) % 360, 98, 0.64, clockTime * 0.25 + i * 0.02);
+    }
+
+    ctx.restore();
+}
+
+function getKochPoints(depth) {
+    const key = String(depth);
+    if (scene.kochCache.has(key)) return scene.kochCache.get(key);
+
+    // Normalized equilateral triangle (counter-clockwise), centered roughly at origin.
+    let pts = [
+        { x: 0, y: -1 },
+        { x: Math.cos(Math.PI / 6), y: Math.sin(Math.PI / 6) },
+        { x: -Math.cos(Math.PI / 6), y: Math.sin(Math.PI / 6) }
+    ];
+
+    for (let d = 0; d < depth; d++) {
+        const next = [];
+        for (let i = 0; i < pts.length; i++) {
+            const a = pts[i];
+            const b = pts[(i + 1) % pts.length];
+            const vx = (b.x - a.x) / 3;
+            const vy = (b.y - a.y) / 3;
+            const p1 = { x: a.x + vx, y: a.y + vy };
+            const p2 = { x: a.x + vx * 2, y: a.y + vy * 2 };
+
+            // rotate v by -60 degrees to create outward bump (works with CCW triangle)
+            const rx = vx * 0.5 + vy * (Math.sqrt(3) / 2);
+            const ry = -vx * (Math.sqrt(3) / 2) + vy * 0.5;
+            const peak = { x: p1.x + rx, y: p1.y + ry };
+
+            next.push(a, p1, peak, p2);
+        }
+        pts = next;
+    }
+
+    scene.kochCache.set(key, pts);
+    return pts;
+}
+
+// ══════════════════════════════════════════════════
+// Barnsley Fern（IFS 点云，明显差异：有机叶片）
+// ══════════════════════════════════════════════════
+function renderBarnsleyFern(ctx, radius, depthValue, baseHue, qualityMode) {
+    const depth = Math.max(0, Math.round(depthValue));
+    const maxPoints = qualityMode === 'protected' ? 12000 : qualityMode === 'balanced' ? 17000 : 24000;
+    const points = Math.min(maxPoints, 6000 + depth * 2500);
+
+    const rnd = mulberry32(seedFromState(0xBADC0DE));
+    let x = 0, y = 0;
+
+    // Fit fern into viewport: x in ~[-2.2, 2.7], y in ~[0, 10]
+    const sx = radius * 0.22;
+    const sy = radius * 0.19;
+    const ox = 0;
+    const oy = radius * 0.55;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    const hueValue = (baseHue + 110) % 360;
+    ctx.fillStyle = hsbToRgbaFast(hueValue, 52, 92, qualityMode === 'protected' ? 0.35 : 0.45);
+    const samples = [];
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
+
+    for (let i = 0; i < points + 30; i++) {
+        const r = rnd();
+        let nx, ny;
+        if (r < 0.01) {
+            nx = 0;
+            ny = 0.16 * y;
+        } else if (r < 0.86) {
+            nx = 0.85 * x + 0.04 * y;
+            ny = -0.04 * x + 0.85 * y + 1.6;
+        } else if (r < 0.93) {
+            nx = 0.2 * x - 0.26 * y;
+            ny = 0.23 * x + 0.22 * y + 1.6;
+        } else {
+            nx = -0.15 * x + 0.28 * y;
+            ny = 0.26 * x + 0.24 * y + 0.44;
+        }
+        x = nx; y = ny;
+
+        if (i < 30) continue; // burn-in
+
+        const px = ox + x * sx;
+        const py = oy - y * sy;
+        ctx.fillRect(px, py, 1, 1);
+        if (i % Math.max(180, Math.floor(points / 22)) === 0) {
+            samples.push({ x: px, y: py, index: i });
+        }
+    }
+
+    // highlight speckles
+    if (qualityMode !== 'protected') {
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        for (let i = 0; i < 180; i++) {
+            const px = (rnd() - 0.5) * radius * 0.85;
+            const py = (rnd() - 0.7) * radius * 0.9;
+            ctx.fillRect(px, py, 1, 1);
+        }
+    }
+
+    // 将用户图案挂到部分叶片节点上，但仍然保留蕨类的点云主体
+    for (let i = 0; i < samples.length; i++) {
+        const sample = samples[i];
+        const t = i / Math.max(1, samples.length - 1);
+        const shape = shapes[i % shapes.length];
+        const size = Math.max(1.6, radius * (0.012 + t * 0.012));
+        drawShapeStamp(
+            ctx,
+            shape,
+            sample.x,
+            sample.y,
+            size,
+            (hueValue + t * 34) % 360,
+            86 + t * 10,
+            qualityMode === 'protected' ? 0.14 : 0.22,
+            t * 1.8
+        );
+    }
+
+    // 顶部小冠芽
+    for (let i = 0; i < Math.min(5, shapes.length + 2); i++) {
+        const angle = -Math.PI / 2 + i * (Math.PI / Math.max(2, shapes.length + 1));
+        drawShapeStamp(
+            ctx,
+            shapes[i % shapes.length],
+            Math.cos(angle) * radius * 0.08,
+            -radius * 0.78 + Math.sin(angle) * radius * 0.06,
+            Math.max(1.6, radius * 0.018),
+            (hueValue + 20 + i * 8) % 360,
+            96,
+            0.18,
+            angle
+        );
+    }
+
+    ctx.restore();
+}
+
+// ══════════════════════════════════════════════════
+// Phyllotaxis（斐波那契/黄金角花盘）
+// ══════════════════════════════════════════════════
+function renderPhyllotaxis(ctx, radius, depthValue, baseHue, qualityMode, clockTime) {
+    const depth = Math.max(0, Math.round(depthValue));
+    const maxSeeds = qualityMode === 'protected' ? 3500 : qualityMode === 'balanced' ? 6000 : 9000;
+    const seeds = Math.min(maxSeeds, 1200 + depth * 950);
+    const ga = Math.PI * (3 - Math.sqrt(5)); // golden angle
+    const c = radius * (0.017 + state.params.spread * 0.004);
+    const shapes = state.selectedShapes.length ? state.selectedShapes : ['circle'];
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    const hueValue = (baseHue + 42) % 360;
+    const rnd = mulberry32(seedFromState(0xF1B0));
+
+    for (let i = 0; i < seeds; i++) {
+        const a = i * ga + clockTime * state.params.spiral * 0.08;
+        const rr = c * Math.sqrt(i);
+        const px = Math.cos(a) * rr;
+        const py = Math.sin(a) * rr;
+
+        const t = i / seeds;
+        const bri = 40 + t * 58;
+        const alpha = qualityMode === 'protected' ? 0.22 : 0.28;
+
+        if (i % 34 === 0 && qualityMode !== 'protected') {
+            const s = shapes[(i / 34) % shapes.length | 0];
+            const r = Math.max(1.4, radius * 0.013) * (0.9 + rnd() * 0.5);
+            drawShapeStamp(ctx, s, px, py, r, (hueValue + t * 80) % 360, Math.min(100, bri + 12), 0.55, a + i * 0.01);
+        } else {
+            ctx.fillStyle = hsbToRgbaFast((hueValue + t * 90) % 360, 46, Math.min(100, bri + 10), alpha);
+            ctx.fillRect(px, py, 1, 1);
+        }
+    }
+
+    // 中心花心与外环花瓣，用来强化“用户图案参与构图”的感知
+    drawShapeStamp(ctx, shapes[0], 0, 0, Math.max(3.8, radius * 0.06), (hueValue + 18) % 360, 98, 0.5, clockTime * 0.2);
+    drawShapeRing(ctx, shapes, radius * 0.14, Math.min(8, shapes.length * 2 + 2), Math.max(2.2, radius * 0.024), (hueValue + 30) % 360, 94, 0.26, clockTime * 0.08);
+
+    ctx.restore();
+}
+
+function seedFromState(extra) {
+    const s = `${state.baseColor}|${state.engine}|${state.params.depth}|${state.params.scale}|${state.params.spiral}|${state.params.spread}|${extra}`;
+    return hashString(s) >>> 0;
+}
+
+function hashString(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+}
+
+function mulberry32(seed) {
+    let t = seed >>> 0;
+    return function () {
+        t += 0x6D2B79F5;
+        let x = Math.imul(t ^ (t >>> 15), 1 | t);
+        x ^= x + Math.imul(x ^ (x >>> 7), 61 | x);
+        return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+// ══════════════════════════════════════════════════
+// 图形绘制
+// ══════════════════════════════════════════════════
+function traceShapePath(ctx, shape, r) {
+    switch(shape) {
+        case 'triangle': tracePolygon(ctx,3,r,-Math.PI/2); break;
+        case 'square': { const s=r*Math.SQRT2; ctx.beginPath(); ctx.rect(-s/2,-s/2,s,s); break; }
+        case 'circle': ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); break;
+        case 'pentagon': tracePolygon(ctx,5,r,-Math.PI/2); break;
+        case 'hexagon': tracePolygon(ctx,6,r,-Math.PI/2); break;
+        case 'star5': traceStar(ctx,r*0.4,r,5); break;
+        case 'cross4': traceStar(ctx,r*0.16,r,4); break;
+        case 'flower': traceFlower(ctx,r); break;
+    }
+}
+function tracePolygon(ctx,n,r,start) {
+    ctx.beginPath();
+    for(let i=0;i<n;i++){const a=start+i*Math.PI*2/n; i===0?ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r):ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);}
+    ctx.closePath();
+}
+function traceStar(ctx,ri,ro,n) {
+    const step=Math.PI/n; ctx.beginPath();
+    for(let i=0;i<n*2;i++){const r=i%2===0?ro:ri,a=-Math.PI/2+i*step; i===0?ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r):ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);}
+    ctx.closePath();
+}
+function traceFlower(ctx,r) {
+    ctx.beginPath();
+    for(let a=-Math.PI/2,i=0;a<=Math.PI*1.5+0.1;a+=0.1,i++){
+        const rr=r*0.74+Math.sin(5*(a+Math.PI/2))*(r*0.26);
+        i===0?ctx.moveTo(Math.cos(a)*rr,Math.sin(a)*rr):ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);
+    }
+    ctx.closePath();
+}
+
+function createGradientFast(ctx, r, h, b, a) {
+    const g = ctx.createRadialGradient(-r*0.28, -r*0.34, r*0.05, 0, 0, r*1.18);
+    g.addColorStop(0, hsbToRgbaFast((h-12+360)%360, 38, 100, a));
+    g.addColorStop(0.34, hsbToRgbaFast(h, 74, Math.min(100,b+12), a));
+    g.addColorStop(0.78, hsbToRgbaFast((h+22)%360, 88, Math.max(18,b-8), a*0.94));
+    g.addColorStop(1, hsbToRgbaFast((h+42)%360, 82, 14, a*0.74));
+    return g;
+}
+
+// ══════════════════════════════════════════════════
+// 分支计算
+// ══════════════════════════════════════════════════
+function resolveBranchCount(shape) {
+    const n = SHAPE_META[shape].branches;
+    const l = state.layout;
+    let b = state.params.branches > 0 ? state.params.branches : n;
+    if (l.branchFloor) b = Math.max(b, l.branchFloor);
+    if (l.maxBranches) b = Math.min(b, l.maxBranches);
+    return Math.max(1, Math.round(b));
+}
+
+function resolveBranchTargets(shape, layer, branches, spiralOffset, clockTime) {
+    const l = state.layout;
+    const startAngle = shape==='square'||shape==='cross4' ? Math.PI/4 : shape==='circle' ? clockTime*0.22 : -Math.PI/2;
+    const actualBranches = l.branchFloor ? Math.max(branches, l.branchFloor) : branches;
+    const rotOff = l.mode==='snowflake' && layer%2===1 ? (l.alternateRotation||0)*Math.PI/180 : 0;
+    const targets = [];
+    for (let i=0; i<actualBranches; i++) {
+        const jitter = Math.sin(clockTime*0.55+layer*0.35+i*0.9) * (l.branchJitterDeg||0)*Math.PI/180;
+        const a = startAngle + rotOff + i*Math.PI*2/actualBranches + jitter;
+        const rs = l.mode==='snowflake' && i%2===1 ? 0.94 : 1;
+        targets.push({ x: Math.cos(a)*spiralOffset*rs*l.offsetXScale, y: Math.sin(a)*spiralOffset*rs*l.offsetYScale });
+    }
+    return targets;
+}
+
+// ══════════════════════════════════════════════════
+// 边框绘制
+// ══════════════════════════════════════════════════
+function drawSceneFrame(ctx, box, baseHue) {
+    ctx.save();
+    const g = ctx.createLinearGradient(box.x, box.y, box.x+box.w, box.y+box.h);
+    g.addColorStop(0, hsbToRgbaFast((baseHue+10)%360, 70, 88, 0.12));
+    g.addColorStop(0.5, 'rgba(255,255,255,0)');
+    g.addColorStop(1, hsbToRgbaFast((baseHue+50)%360, 60, 76, 0.12));
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([10, 16]);
+    ctx.strokeRect(box.x+14, box.y+14, box.w-28, box.h-28);
+    ctx.restore();
+}
+
+// ══════════════════════════════════════════════════
+// 渲染预算系统
+// ══════════════════════════════════════════════════
+function computeRenderBudget() {
+    const engine = getEngine();
+    let estimate = 0;
+    let branchFactor = 0;
+    let secondaryText = '';
+    let effectiveDepth = state.params.depth;
+
+    if (engine === 'tree') {
+        const branches = Math.max(2, Math.min(state.params.branches > 0 ? state.params.branches : 2, state.layout.maxBranches || 3));
+        branchFactor = branches + (state.params.center ? 1 : 0);
+        estimate = estimateNodes(state.params.depth, branchFactor);
+        secondaryText = `树枝分叉 ${branches}`;
+    } else if (engine === 'koch') {
+        const d = Math.max(0, Math.min(7, Math.round(state.params.depth)));
+        estimate = Math.round(3 * Math.pow(4, d));
+        secondaryText = `Koch 深度 ${d}`;
+    } else if (engine === 'fern') {
+        const d = Math.max(0, Math.round(state.params.depth));
+        const maxPoints = 24000;
+        estimate = Math.min(maxPoints, 6000 + d * 2500);
+        secondaryText = `IFS 点云 ${new Intl.NumberFormat('zh-CN').format(estimate)}`;
+    } else if (engine === 'phyllotaxis') {
+        const d = Math.max(0, Math.round(state.params.depth));
+        const maxSeeds = 9000;
+        estimate = Math.min(maxSeeds, 1200 + d * 950);
+        secondaryText = `黄金角种子 ${new Intl.NumberFormat('zh-CN').format(estimate)}`;
+    } else {
+        const avgB = state.selectedShapes.reduce((s,sh)=>s+resolveBranchCount(sh),0)/state.selectedShapes.length;
+        branchFactor = avgB + (state.params.center ? 1 : 0);
+        estimate = estimateNodes(state.params.depth, branchFactor);
+        secondaryText = `平均分裂 ${branchFactor.toFixed(1)}`;
+    }
+
+    let qualityMode = 'cinematic';
+    let modeLabel = '辉光全开';
+    let detail = '画面正在以完整效果运行。';
+    let noteClass = '';
+
+    // thresholds tuned per engine to avoid "looks the same but slower" situations
+    const warnAt = engine === 'koch' ? 12000 : engine === 'fern' ? 15000 : engine === 'phyllotaxis' ? 5500 : engine === 'tree' ? 9000 : engine === 'coral' ? 11000 : 14000;
+    const dangerAt = engine === 'koch' ? 26000 : engine === 'fern' ? 22000 : engine === 'phyllotaxis' ? 8000 : engine === 'tree' ? 20000 : engine === 'coral' ? 22000 : 32000;
+    const hardCap = engine === 'koch' ? 32000 : engine === 'fern' ? 26000 : engine === 'phyllotaxis' ? 9000 : engine === 'tree' ? 32000 : engine === 'coral' ? 30000 : 50000;
+
+    if (estimate > warnAt) {
+        qualityMode = 'balanced';
+        modeLabel = '平衡模式';
+        detail = '系统会减少深层细节，优先保证流畅。';
+        noteClass = 'warn';
+    }
+    if (estimate > dangerAt) {
+        qualityMode = 'protected';
+        modeLabel = '保护模式';
+        detail = '系统主动限制细节，避免卡顿。';
+        noteClass = 'danger';
+    }
+
+    // auto-reduce depth to stay under hard cap for recursive engines
+    if (engine === 'radial' || engine === 'tree' || engine === 'coral') {
+        while (estimateNodes(effectiveDepth, branchFactor) > hardCap && effectiveDepth > 1) effectiveDepth -= 0.5;
+    } else if (engine === 'koch') {
+        while (Math.round(3 * Math.pow(4, Math.max(0, Math.round(effectiveDepth)))) > hardCap && effectiveDepth > 1) effectiveDepth -= 1;
+        secondaryText = `Koch 深度 ${Math.max(0, Math.round(effectiveDepth))}`;
+    } else if (engine === 'fern') {
+        while (Math.min(24000, 6000 + Math.max(0, Math.round(effectiveDepth)) * 2500) > hardCap && effectiveDepth > 1) effectiveDepth -= 1;
+        const reducedPoints = Math.min(24000, 6000 + Math.max(0, Math.round(effectiveDepth)) * 2500);
+        secondaryText = `IFS 点云 ${new Intl.NumberFormat('zh-CN').format(reducedPoints)}`;
+    } else if (engine === 'phyllotaxis') {
+        while (Math.min(9000, 1200 + Math.max(0, Math.round(effectiveDepth)) * 950) > hardCap && effectiveDepth > 1) effectiveDepth -= 1;
+        const reducedSeeds = Math.min(9000, 1200 + Math.max(0, Math.round(effectiveDepth)) * 950);
+        secondaryText = `黄金角种子 ${new Intl.NumberFormat('zh-CN').format(reducedSeeds)}`;
+    }
+
+    return {
+        estimate,
+        branchFactor,
+        secondaryText,
+        qualityMode,
+        modeLabel,
+        detail,
+        noteClass,
+        effectiveDepth: Math.max(0, effectiveDepth),
+        isReduced: effectiveDepth < state.params.depth
+    };
+}
+function estimateNodes(d,bf) {
+    let t=0,lc=1; const rd=Math.max(0,Math.ceil(d));
+    for(let i=0;i<=rd;i++){t+=lc;lc*=bf;}
+    return Math.round(t);
+}
+
+function updateBudgetUI(budget) {
+    document.getElementById('metric-nodes').textContent = new Intl.NumberFormat('zh-CN').format(budget.estimate);
+    document.getElementById('metric-branch').textContent = budget.secondaryText || `平均分裂 ${budget.branchFactor.toFixed(1)}`;
+    document.getElementById('metric-mode').textContent = budget.modeLabel;
+    document.getElementById('metric-state').textContent = budget.isReduced
+        ? `系统将深度临时收敛到 ${budget.effectiveDepth.toFixed(1)} 级。`
+        : `${budget.detail}`;
+    const note = document.getElementById('performance-note');
+    note.classList.remove('warn','danger');
+    if(budget.noteClass) note.classList.add(budget.noteClass);
+    note.textContent = budget.isReduced
+        ? `预计 ${new Intl.NumberFormat('zh-CN').format(budget.estimate)} 个节点，已自动削峰。`
+        : budget.detail;
+}
+
+function computeDynamicLimits() {
+    const engine = getEngine();
+    const eb = state.selectedShapes.reduce((s,sh)=>s+resolveBranchCount(sh),0)/state.selectedShapes.length;
+    let dm=6,bm=10;
+
+    if (engine === 'tree' || state.layout.mode === 'tree') {
+        dm = 9;
+        bm = Math.min(bm, state.layout.maxBranches || 3);
+    } else if (engine === 'coral') {
+        dm = 7;
+        bm = Math.min(bm, 4);
+    } else if (engine === 'koch') {
+        dm = 6;
+    } else if (engine === 'fern') {
+        dm = 8;
+    } else if (engine === 'phyllotaxis') {
+        dm = 7;
+    }
+
+    if (state.layout.mode === 'snowflake' && engine === 'radial') {
+        dm = Math.min(dm, 5);
+        bm = Math.min(bm, state.layout.maxBranches || 6);
+    }
+
+    if (engine === 'radial' && state.params.center) { dm = Math.min(dm,5); bm = Math.min(bm,8); }
+    if (engine === 'radial') {
+        if (eb>=8) dm=Math.min(dm,4); else if (eb>=6) dm=Math.min(dm,5);
+        if (state.params.depth>=6) bm=Math.min(bm,5); else if (state.params.depth>=5) bm=Math.min(bm,7);
+    }
+
+    return {depthMax:dm,branchMax:bm};
+}
+
+// 标记脏 + 刷新预算
+function markDirty() {
+    scene.fractalDirty = true;
+    scene.bgDirty = true;
+}
+
+function refreshDerivedState(syncControls = false) {
+    scene.limits = computeDynamicLimits();
+    document.getElementById('s-depth').max = String(scene.limits.depthMax);
+    document.getElementById('s-branches').max = String(scene.limits.branchMax);
+    let clamped = false;
+    if(state.params.depth>scene.limits.depthMax){state.params.depth=scene.limits.depthMax;clamped=true;}
+    if(state.params.branches>scene.limits.branchMax){state.params.branches=scene.limits.branchMax;clamped=true;}
+    scene.baseHue = hexToHue(state.baseColor);
+    scene.budget = computeRenderBudget();
+    if(syncControls||clamped) syncParameterControls();
+    updateBudgetUI(scene.budget);
+    markDirty();
+}
+
+// ══════════════════════════════════════════════════
+// UI 交互
+// ══════════════════════════════════════════════════
+function renderPresets() {
+    const row = document.getElementById('presetRow'); row.innerHTML = '';
+    PRESETS.filter(p => !p.hidden).forEach(p => {
+        const btn = document.createElement('button');
+        btn.type='button'; btn.className='preset-btn'; btn.dataset.preset=p.id;
+        btn.innerHTML=`<span class="preset-name">${p.name}</span><span class="preset-meta">${p.desc}</span>`;
+        btn.addEventListener('click', ()=>applyPreset(p.id));
+        row.appendChild(btn);
+    });
+}
+function renderPalette() {
+    const row = document.getElementById('paletteRow'); row.innerHTML = '';
+    PALETTES.forEach(hex => {
+        const sw = document.createElement('button');
+        sw.type='button'; sw.className='palette-swatch'; sw.style.background=hex;
+        sw.addEventListener('click', ()=>{state.baseColor=hex;state.activePreset=null;syncUIFromState();updatePresetActiveState();});
+        row.appendChild(sw);
+    });
+}
+function bindUI() {
+    sliders.forEach(([sid,vid,key,fmt]) => {
+        const sl = document.getElementById(sid);
+        sl.addEventListener('input', ()=>{
+            state.params[key] = Number(sl.value);
+            state.activePreset = null;
+            document.getElementById(vid).textContent = fmt(sl.value);
+            updatePresetActiveState();
+            refreshDerivedState();
+        });
+    });
+    document.getElementById('colorPicker').addEventListener('input', e=>{
+        state.baseColor = e.target.value;
+        state.activePreset = null;
+        updatePaletteActiveState();
+        updatePresetActiveState();
+        refreshDerivedState();
+    });
+    bindToggle('t-center','center');
+    bindToggle('t-mirror','mirror');
+    document.getElementById('guide-btn').addEventListener('click', () => openGuideModal());
+    document.getElementById('guide-close').addEventListener('click', () => closeGuideModal());
+    document.getElementById('guide-modal').addEventListener('click', event => {
+        if (event.target.id === 'guide-modal') closeGuideModal();
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeGuideModal(false);
+    });
+    document.querySelectorAll('.shape-btn').forEach(btn => {
+        btn.addEventListener('click', ()=>{
+            const s = btn.dataset.shape;
+            if(state.selectedShapes.includes(s)){if(state.selectedShapes.length>1)state.selectedShapes=state.selectedShapes.filter(x=>x!==s);}
+            else state.selectedShapes.push(s);
+            state.activePreset=null;
+            updateShapeButtons(); updatePresetActiveState(); renderQueue(); refreshDerivedState();
+        });
+    });
+    document.getElementById('shape-queue').addEventListener('dragover', e=>e.preventDefault());
+}
+function bindToggle(id,key) {
+    const btn = document.getElementById(id);
+    btn.addEventListener('click', ()=>{
+        state.params[key]=!state.params[key]; state.activePreset=null;
+        syncToggle(btn, state.params[key]); updatePresetActiveState(); refreshDerivedState(true);
+    });
+}
+function renderQueue() {
+    const q = document.getElementById('shape-queue'); q.innerHTML = '';
+    state.selectedShapes.forEach((shape,i) => {
+        const chip = document.createElement('div');
+        chip.className='queue-chip'; chip.draggable=true; chip.dataset.idx=i;
+        chip.innerHTML=`<span class="chip-order">${i+1}</span><span>${SHAPE_META[shape].name}</span><button class="chip-remove" type="button">&times;</button>`;
+        chip.addEventListener('dragstart', e=>{dragSrcIdx=i;chip.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+        chip.addEventListener('dragend', ()=>{dragSrcIdx=null;chip.classList.remove('dragging');clearDropIndicators();});
+        chip.addEventListener('dragover', e=>{e.preventDefault();clearDropIndicators();
+            const rect=chip.getBoundingClientRect(),before=e.clientX<rect.left+rect.width/2;
+            const ind=document.createElement('div');ind.className='drop-indicator';
+            before?chip.parentNode.insertBefore(ind,chip):chip.parentNode.insertBefore(ind,chip.nextSibling);
+        });
+        chip.addEventListener('drop', e=>{e.preventDefault();if(dragSrcIdx===null)return;
+            const ti=Number(chip.dataset.idx),rect=chip.getBoundingClientRect(),before=e.clientX<rect.left+rect.width/2;
+            const moved=state.selectedShapes.splice(dragSrcIdx,1)[0];
+            let ni=before?ti:ti+1; if(dragSrcIdx<ni)ni--;
+            state.selectedShapes.splice(ni,0,moved); state.activePreset=null; renderQueue(); updatePresetActiveState(); markDirty();
+        });
+        chip.querySelector('.chip-remove').addEventListener('click', e=>{
+            e.stopPropagation();
+            if(state.selectedShapes.length>1){state.selectedShapes=state.selectedShapes.filter(x=>x!==shape);
+            state.activePreset=null; updateShapeButtons(); updatePresetActiveState(); renderQueue(); refreshDerivedState();}
+        });
+        q.appendChild(chip);
+    });
+}
+function clearDropIndicators(){document.querySelectorAll('.drop-indicator').forEach(n=>n.remove());}
+
+function applyPreset(id) {
+    const p = PRESETS.find(x=>x.id===id); if(!p) return;
+    state.activePreset=p.id; state.selectedShapes=[...p.shapes]; state.baseColor=p.color;
+    state.engine = p.engine || ((p.layout && p.layout.mode === 'tree') ? 'tree' : 'radial');
+    state.params={...p.params}; state.layout={...DEFAULT_STYLE,...(p.layout||{})};
+    driftState.lastTickMs = 0;
+    driftState.uiSyncMs = 0;
+    driftState.startMs = performance.now();
+    scene.lastRenderTime = 0;
+    scene.fractalDirty = true;
+    syncUIFromState(); renderQueue(); refreshDerivedState(true);
+    if (!state.dismissedGuidePresets.has(id)) openGuideModal(id);
+    else populateGuideModal(id);
+}
+function syncUIFromState() {
+    syncParameterControls();
+    document.getElementById('colorPicker').value = state.baseColor;
+    syncToggle(document.getElementById('t-center'), state.params.center);
+    syncToggle(document.getElementById('t-mirror'), state.params.mirror);
+    updateShapeButtons(); updatePaletteActiveState(); updatePresetActiveState();
+}
+function syncParameterControls() {
+    sliders.forEach(([sid,vid,key,fmt])=>{
+        const sl=document.getElementById(sid); sl.value=state.params[key];
+        document.getElementById(vid).textContent=fmt(String(state.params[key]));
+    });
+}
+function syncToggle(el,on){el.classList.toggle('on',on);el.setAttribute('aria-pressed',String(on));}
+function updateShapeButtons(){document.querySelectorAll('.shape-btn').forEach(b=>b.classList.toggle('active',state.selectedShapes.includes(b.dataset.shape)));}
+function updatePaletteActiveState(){document.querySelectorAll('.palette-swatch').forEach(b=>{
+    const c=rgbToHex(b.style.backgroundColor); b.classList.toggle('active',c.toLowerCase()===state.baseColor.toLowerCase());
+});}
+function updatePresetActiveState(){document.querySelectorAll('.preset-btn').forEach(b=>b.classList.toggle('active',b.dataset.preset===state.activePreset));}
+
+// ══════════════════════════════════════════════════
+// 工具函数
+// ══════════════════════════════════════════════════
+function buildStarfield() {
+    scene.stars = [];
+    for(let i=0;i<120;i++) scene.stars.push({
+        x:Math.random(), y:Math.random(), size:Math.random()*1.3+0.4,
+        alphaBase:Math.random()*0.36+0.16, hueOffset:Math.random()*58-28
+    });
+}
+function getSceneViewport() {
+    const pr = document.getElementById('ui-panel').getBoundingClientRect();
+    if(windowWidth<920){const ti=pr.height; return {x:0,y:ti,w:width,h:Math.max(height-ti,height*0.48)};}
+    return {x:pr.width,y:0,w:width-pr.width,h:height};
+}
+function rgbToHex(s){if(!s||s.startsWith('#'))return s||'';const m=s.match(/\d+/g);if(!m)return '';return `#${m.slice(0,3).map(n=>Number(n).toString(16).padStart(2,'0')).join('')}`;}
+
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+    rebuildBuffers();
+    buildStarfield();
+    refreshDerivedState(true);
+}
+
+// ══════════════════════════════════════════════════
+// 设置面板绑定
+// ══════════════════════════════════════════════════
+function bindSettings() {
+    const btn = document.getElementById('settings-btn');
+    const panel = document.getElementById('settings-panel');
+
+    btn.addEventListener('click', () => {
+        panel.classList.toggle('open');
+        btn.classList.toggle('active');
+    });
+
+    // 点击面板外部关闭
+    document.addEventListener('click', (e) => {
+        if (!panel.contains(e.target) && e.target !== btn) {
+            panel.classList.remove('open');
+            btn.classList.remove('active');
+        }
+    });
+
+    // 绑定每个效果开关
+    const fxToggles = [
+        ['fx-glow', 'glow'],
+        ['fx-nebula', 'nebula'],
+        ['fx-stars', 'stars'],
+        ['fx-gradient', 'gradient'],
+        ['fx-stroke', 'stroke'],
+        ['fx-frame', 'frame']
+    ];
+
+    fxToggles.forEach(([elId, fxKey]) => {
+        const toggle = document.getElementById(elId);
+        // 初始化视觉状态（默认全部 OFF）
+        syncToggle(toggle, fx[fxKey]);
+
+        toggle.addEventListener('click', () => {
+            fx[fxKey] = !fx[fxKey];
+            syncToggle(toggle, fx[fxKey]);
+            markDirty();
+        });
+    });
+}
+</script>
+</body>
+</html>
