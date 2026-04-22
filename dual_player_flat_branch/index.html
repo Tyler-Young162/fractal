@@ -1056,9 +1056,9 @@
         const master = ctx.createGain();
         const musicBus = ctx.createGain();
         const sfxBus = ctx.createGain();
-        master.gain.value = 0.34;
-        musicBus.gain.value = 0.18;
-        sfxBus.gain.value = 0.92;
+        master.gain.value = 0.3;
+        musicBus.gain.value = 0.14;
+        sfxBus.gain.value = 0.88;
         musicBus.connect(master);
         sfxBus.connect(master);
         master.connect(ctx.destination);
@@ -1128,8 +1128,52 @@
       const ctx = ensureAudioContext();
       if (!ctx) return;
       const now = ctx.currentTime + 0.005;
-      scheduleTone({ time: now, frequency: 540 + Math.random() * 80, duration: 0.12, gain: 0.065, type: 'triangle', pan });
-      scheduleTone({ time: now + 0.018, frequency: 860 + Math.random() * 110, duration: 0.08, gain: 0.032, type: 'sine', pan, detune: -4 });
+      scheduleTone({ time: now, frequency: 460 + Math.random() * 56, duration: 0.09, gain: 0.056, type: 'triangle', pan, attack: 0.004, release: 0.1 });
+      scheduleTone({ time: now + 0.016, frequency: 760 + Math.random() * 90, duration: 0.07, gain: 0.03, type: 'sine', pan: pan * 0.8, detune: -6, attack: 0.003, release: 0.08 });
+    }
+
+    function playUiTickSound(pan = 0, bright = false) {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime + 0.004;
+      scheduleTone({ time: now, frequency: bright ? 620 : 520, duration: 0.055, gain: 0.02, type: 'triangle', pan, attack: 0.003, release: 0.06 });
+      scheduleTone({ time: now + 0.028, frequency: bright ? 920 : 760, duration: 0.05, gain: 0.012, type: 'sine', pan: pan * 0.6, attack: 0.002, release: 0.05 });
+    }
+
+    function playSendSound(pan = 0) {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime + 0.006;
+      scheduleTone({ time: now, frequency: 360, duration: 0.06, gain: 0.028, type: 'triangle', pan, attack: 0.003, release: 0.08 });
+      scheduleTone({ time: now + 0.04, frequency: 520, duration: 0.08, gain: 0.024, type: 'triangle', pan: pan * 0.7, attack: 0.003, release: 0.08 });
+      scheduleTone({ time: now + 0.082, frequency: 720, duration: 0.075, gain: 0.018, type: 'sine', pan: pan * 0.45, attack: 0.002, release: 0.09 });
+    }
+
+    function playGrowthSound(pan = 0, strength = 1) {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime + 0.004;
+      const lift = Math.min(4, Math.max(1, strength));
+      scheduleTone({ time: now, frequency: 300 + lift * 24, duration: 0.08, gain: 0.026 + lift * 0.004, type: 'triangle', pan, attack: 0.003, release: 0.08 });
+      scheduleTone({ time: now + 0.03, frequency: 430 + lift * 36, duration: 0.1, gain: 0.03 + lift * 0.004, type: 'sine', pan: pan * 0.7, attack: 0.003, release: 0.1 });
+      scheduleTone({ time: now + 0.068, frequency: 620 + lift * 26, duration: 0.085, gain: 0.016, type: 'triangle', pan: pan * 0.5, attack: 0.002, release: 0.07 });
+    }
+
+    function playDecaySound(pan = 0) {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime + 0.005;
+      scheduleSweep({ time: now, startFreq: 520, endFreq: 280, duration: 0.14, gain: 0.014, pan, type: 'triangle' });
+      scheduleTone({ time: now + 0.02, frequency: 240, duration: 0.08, gain: 0.012, type: 'sine', pan: pan * 0.5, attack: 0.003, release: 0.08 });
+    }
+
+    function playCelebrationCue(pan = 0) {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime + 0.01;
+      scheduleTone({ time: now, frequency: 392, duration: 0.09, gain: 0.028, type: 'triangle', pan, attack: 0.004, release: 0.08 });
+      scheduleTone({ time: now + 0.08, frequency: 523.25, duration: 0.12, gain: 0.026, type: 'triangle', pan: pan * 0.7, attack: 0.004, release: 0.1 });
+      scheduleTone({ time: now + 0.16, frequency: 659.25, duration: 0.16, gain: 0.024, type: 'sine', pan: pan * 0.45, attack: 0.004, release: 0.14 });
     }
 
     function playLaunchSound(pan = 0) {
@@ -1137,10 +1181,10 @@
       if (!ctx) return;
       scheduleSweep({
         time: ctx.currentTime + 0.01,
-        startFreq: 220,
-        endFreq: 620,
-        duration: 0.34,
-        gain: 0.03,
+        startFreq: 240,
+        endFreq: 720,
+        duration: 0.3,
+        gain: 0.026,
         pan,
         type: 'triangle'
       });
@@ -1150,24 +1194,26 @@
       const ctx = ensureAudioContext();
       if (!ctx) return;
       const now = ctx.currentTime + 0.01;
-      scheduleTone({ time: now, frequency: 320 + Math.random() * 70, duration: 0.22, gain: 0.04, type: 'square', pan });
-      scheduleTone({ time: now + 0.015, frequency: 620 + Math.random() * 120, duration: 0.18, gain: 0.028, type: 'triangle', pan: pan * 0.7 });
-      scheduleTone({ time: now + 0.03, frequency: 980 + Math.random() * 220, duration: 0.12, gain: 0.018, type: 'sine', pan: pan * 0.5 });
+      scheduleTone({ time: now, frequency: 280 + Math.random() * 44, duration: 0.12, gain: 0.03, type: 'triangle', pan, attack: 0.003, release: 0.08 });
+      scheduleTone({ time: now + 0.05, frequency: 420 + Math.random() * 50, duration: 0.13, gain: 0.026, type: 'triangle', pan: pan * 0.7, attack: 0.003, release: 0.08 });
+      scheduleTone({ time: now + 0.1, frequency: 620 + Math.random() * 80, duration: 0.16, gain: 0.022, type: 'sine', pan: pan * 0.45, attack: 0.004, release: 0.1 });
     }
 
     function scheduleBackgroundMusic() {
       const ctx = state.audio.ctx;
       if (!ctx || !state.audio.musicStarted || !state.audio.musicBus) return;
       const motif = [
-        { offset: 0.00, ratio: 1, length: 0.38, gain: 0.0105 },
-        { offset: 0.28, ratio: 1.25, length: 0.3, gain: 0.0082 },
-        { offset: 0.58, ratio: 1.5, length: 0.34, gain: 0.009 },
-        { offset: 0.94, ratio: 1.25, length: 0.26, gain: 0.0074 }
+        { offset: 0.00, ratio: 1, length: 0.34, gain: 0.0088 },
+        { offset: 0.26, ratio: 1.25, length: 0.26, gain: 0.0068 },
+        { offset: 0.54, ratio: 1.5, length: 0.3, gain: 0.0074 },
+        { offset: 0.9, ratio: 2, length: 0.24, gain: 0.006 }
       ];
       while (state.audio.musicNextTime < ctx.currentTime + 0.55) {
-        const base = 196 + (state.tree.paletteIndex % 2) * 24;
+        const bases = [174.61, 196, 207.65, 233.08, 261.63];
+        const base = bases[state.tree.paletteIndex] || 196;
         const start = state.audio.musicNextTime;
-        scheduleTone({ time: start, frequency: base * 0.5, duration: 0.72, gain: 0.0048, type: 'sine', bus: 'music', attack: 0.08, release: 0.28 });
+        scheduleTone({ time: start, frequency: base * 0.5, duration: 0.78, gain: 0.0038, type: 'sine', bus: 'music', attack: 0.08, release: 0.32 });
+        scheduleTone({ time: start + 0.12, frequency: base * 0.75, duration: 0.64, gain: 0.0026, type: 'sine', bus: 'music', attack: 0.12, release: 0.28, detune: 6 });
         for (const note of motif) {
           scheduleTone({
             time: start + note.offset,
@@ -1180,7 +1226,7 @@
             release: 0.2
           });
         }
-        state.audio.musicNextTime += 1.56;
+        state.audio.musicNextTime += 1.52;
       }
     }
 
@@ -1751,6 +1797,7 @@
       state.treeNeedsRender = true;
       syncVisibleCollisionNodes();
       updateTreeLabels();
+      playGrowthSound((hitX / Math.max(1, state.stage.width)) * 2 - 1, revealed);
       if (isTreeFull() && !state.fullTreeCelebrated) {
         state.fullTreeCelebrated = true;
         feedMessage('树已经进入满血状态。烟花会自动升空，满屏都会洒出玩家 2 的图案。');
@@ -1768,6 +1815,10 @@
       syncVisibleCollisionNodes();
       state.treeNeedsRender = true;
       updateTreeLabels();
+      const node = state.treeNodes[id];
+      if (node) {
+        playDecaySound((node.center.x / Math.max(1, state.stage.width)) * 2 - 1);
+      }
       return true;
     }
 
@@ -2111,6 +2162,7 @@
       state.sendCount += 1;
       state.previewNeedsRender = true;
       updateSkyBadge();
+      playSendSound(0.35);
       feedMessage(`${player2Profiles[cfg.pattern].name} 已送入天空。当前会以一小组轻量位图精灵漂浮下落，第 ${state.sendCount} 次发送。`);
     }
 
@@ -2213,6 +2265,7 @@
         state.treeIdleTimer = 0;
         updateSkyBadge();
         updateTreeLabels();
+        playCelebrationCue();
         feedMessage(source === 'auto'
           ? '树满血了，操作面板已锁定。树会先回到中轴姿态，然后进入烟花庆祝。'
           : '测试满血结算秀已触发。现在会锁定控制、树归中、放烟花，再逐层爆散回到 3 层。');
@@ -2750,6 +2803,7 @@
 
       dom.challengeMode.addEventListener('change', () => {
         ensureAudioContext();
+        playUiTickSound(0, true);
         state.tree.challengeMode = dom.challengeMode.checked;
         resetTreeGrowth();
         if (state.tree.challengeMode) {
@@ -2760,6 +2814,7 @@
       });
       dom.treeResetBtn.addEventListener('click', () => {
         ensureAudioContext();
+        playUiTickSound(-0.15, false);
         state.tree.depth = treeDefaults.depth;
         state.tree.angle = treeDefaults.angle;
         state.tree.paletteIndex = treeDefaults.paletteIndex;
@@ -2778,6 +2833,7 @@
       });
       dom.treePulseBtn.addEventListener('click', () => {
         ensureAudioContext();
+        playUiTickSound(-0.1, true);
         state.treePulse = Math.max(state.treePulse, 0.65);
         state.treeSwayTime = 0;
         state.treeSwayDuration = 4.4;
@@ -2793,29 +2849,44 @@
     function bindPlayer2Controls() {
       dom.patternSelect.addEventListener('change', () => {
         ensureAudioContext();
+        playUiTickSound(0.18, true);
         applyPlayer2Profile(dom.patternSelect.value);
       });
       if (dom.patternCardGrid) {
+        let isPointerDownOnPatternStrip = false;
         let isDraggingPatternStrip = false;
         let dragStartX = 0;
         let dragStartScroll = 0;
+        const dragThreshold = 8;
 
         dom.patternCardGrid.addEventListener('pointerdown', (event) => {
-          isDraggingPatternStrip = true;
+          isPointerDownOnPatternStrip = true;
+          isDraggingPatternStrip = false;
           dragStartX = event.clientX;
           dragStartScroll = dom.patternCardGrid.scrollLeft;
-          dom.patternCardGrid.setPointerCapture?.(event.pointerId);
-          dom.patternCardGrid.style.cursor = 'grabbing';
         });
 
         dom.patternCardGrid.addEventListener('pointermove', (event) => {
-          if (!isDraggingPatternStrip) return;
+          if (!isPointerDownOnPatternStrip) return;
           const dx = event.clientX - dragStartX;
+          if (!isDraggingPatternStrip && Math.abs(dx) < dragThreshold) return;
+          isDraggingPatternStrip = true;
+          dom.patternCardGrid.style.cursor = 'grabbing';
           dom.patternCardGrid.scrollLeft = dragStartScroll - dx;
           event.preventDefault();
         });
 
-        const stopPatternStripDrag = () => {
+        const stopPatternStripDrag = (event) => {
+          if (isPointerDownOnPatternStrip && !isDraggingPatternStrip) {
+            const card = event?.target?.closest?.('.pattern-card');
+            const next = card?.dataset?.pattern;
+            if (next && next !== state.player2.pattern) {
+              ensureAudioContext();
+              dom.patternSelect.value = next;
+              dom.patternSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+          isPointerDownOnPatternStrip = false;
           isDraggingPatternStrip = false;
           dom.patternCardGrid.style.cursor = 'grab';
         };
@@ -2823,16 +2894,6 @@
         dom.patternCardGrid.addEventListener('pointerup', stopPatternStripDrag);
         dom.patternCardGrid.addEventListener('pointercancel', stopPatternStripDrag);
         dom.patternCardGrid.addEventListener('pointerleave', stopPatternStripDrag);
-
-        dom.patternCardGrid.querySelectorAll('.pattern-card').forEach((card) => {
-          card.addEventListener('click', () => {
-            ensureAudioContext();
-            const next = card.dataset.pattern;
-            if (!next || next === state.player2.pattern) return;
-            dom.patternSelect.value = next;
-            dom.patternSelect.dispatchEvent(new Event('change', { bubbles: true }));
-          });
-        });
       }
       dom.patternLevel.addEventListener('input', () => {
         ensureAudioContext();
