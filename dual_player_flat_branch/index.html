@@ -1,0 +1,2956 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fractal Duet 几何剧场版</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23f4efe4'/%3E%3Crect x='6' y='6' width='52' height='52' fill='%230c0c0c'/%3E%3Ccircle cx='20' cy='20' r='7' fill='%23facc15'/%3E%3Crect x='28' y='14' width='18' height='18' fill='%232563eb'/%3E%3Cpath d='M18 44h24' stroke='%23ef4444' stroke-width='6'/%3E%3C/svg%3E" />
+  <style>
+    :root {
+      color-scheme: light;
+      --cream: #f3eee3;
+      --paper: #fffaf0;
+      --ink: #0b0b0b;
+      --blue: #2563eb;
+      --red: #ef4444;
+      --yellow: #facc15;
+      --text: #111827;
+      --muted: rgba(17, 24, 39, 0.68);
+      --line: rgba(16, 24, 40, 0.22);
+      --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+      font-family: "Avenir Next", "Futura", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0 12%, transparent 12% 100%),
+        linear-gradient(225deg, rgba(239, 68, 68, 0.95) 0 13%, transparent 13% 100%),
+        linear-gradient(315deg, rgba(250, 204, 21, 0.92) 0 12%, transparent 12% 100%),
+        linear-gradient(45deg, rgba(12, 12, 12, 0.94) 0 10%, transparent 10% 100%),
+        var(--cream);
+      color: var(--text);
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 18px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto;
+      width: 180px;
+      height: 180px;
+      background: conic-gradient(from 45deg, var(--yellow), var(--red), var(--blue), var(--yellow));
+      opacity: 0.12;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      left: -60px;
+      bottom: -70px;
+      transform: rotate(12deg);
+      clip-path: polygon(0 0, 100% 10%, 80% 100%, 20% 90%);
+    }
+
+    body::after {
+      right: -40px;
+      top: -50px;
+      clip-path: polygon(20% 0, 100% 0, 100% 100%, 0 80%);
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 236px minmax(0, 1fr) 236px;
+      gap: 14px;
+      min-height: calc(100vh - 36px);
+      align-items: stretch;
+    }
+
+    .panel,
+    .stage-shell {
+      position: relative;
+      overflow: hidden;
+      background: rgba(255, 251, 240, 0.92);
+      border: 3px solid var(--ink);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px 14px 16px;
+      border-radius: 22px;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: auto 14px 14px 14px;
+      height: 6px;
+      background: repeating-linear-gradient(90deg, rgba(17,24,39,.12) 0 8px, transparent 8px 16px);
+      opacity: .5;
+    }
+
+    .panel-left::after,
+    .panel-right::after {
+      content: attr(data-player);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 54px;
+      color: #fffef7;
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .panel-left::after { background: var(--blue); }
+    .panel-right::after { background: var(--red); }
+
+    .panel > * { position: relative; z-index: 1; }
+
+    .panel-header {
+      margin-top: 56px;
+      display: grid;
+      gap: 8px;
+      padding: 10px 12px 12px;
+      border: 2px solid var(--ink);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.58);
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(17, 24, 39, 0.54);
+      font-weight: 800;
+    }
+
+    h1, h2 {
+      margin: 0;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+      line-height: 1.03;
+      color: #111827;
+    }
+
+    h1 { font-size: 24px; }
+    h2 { font-size: 22px; }
+
+    .panel small,
+    .mini-note {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 12px;
+    }
+
+    .hint,
+    .control-group,
+    .preview-wrap {
+      background: rgba(255,255,255,0.72);
+      border: 2px solid var(--ink);
+      border-radius: 18px;
+      box-shadow: 6px 6px 0 rgba(17,24,39,.08);
+    }
+
+    .hint {
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+
+    .hint strong,
+    .overlay-card strong,
+    .stage-title strong {
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .control-group {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .label-row,
+    .status-row,
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .label-row strong { font-weight: 800; }
+
+    .value-chip,
+    .status-row strong {
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(17,24,39,.84);
+    }
+
+    input[type="range"], select, button { width: 100%; }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 34px;
+      background: transparent;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 5px;
+      border-radius: 999px;
+      background: #2d3750;
+      border: 2px solid var(--ink);
+      box-shadow: none;
+    }
+
+    input[type="range"]::-moz-range-track {
+      height: 5px;
+      border-radius: 999px;
+      background: #2d3750;
+      border: 2px solid var(--ink);
+      box-shadow: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      margin-top: -11px;
+      border-radius: 4px;
+      border: 3px solid var(--ink);
+      background: var(--yellow);
+      box-shadow: none;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      border: 3px solid var(--ink);
+      background: var(--yellow);
+      box-shadow: none;
+    }
+
+    .palette-slider::-webkit-slider-runnable-track {
+      background: linear-gradient(90deg,
+        #2563eb 0 20%,
+        #ef4444 20% 40%,
+        #f97316 40% 60%,
+        #111827 60% 80%,
+        #facc15 80% 100%);
+    }
+
+    .palette-slider::-moz-range-track {
+      background: linear-gradient(90deg,
+        #2563eb 0 20%,
+        #ef4444 20% 40%,
+        #f97316 40% 60%,
+        #111827 60% 80%,
+        #facc15 80% 100%);
+    }
+
+    select,
+    button {
+      border: 2px solid var(--ink);
+      border-radius: 14px;
+      padding: 11px 12px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--ink);
+      background: #fffef7;
+      outline: none;
+    }
+
+    button { cursor: pointer; transition: transform 140ms ease, box-shadow 140ms ease; }
+    button:hover { transform: translate(-1px, -1px); }
+    button:active { transform: translate(1px, 1px); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    .primary-btn {
+      background: var(--yellow);
+      box-shadow: 5px 5px 0 rgba(17,24,39,.14);
+    }
+
+    .secondary-btn { background: #fff; }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .full-width-btn { margin-top: -2px; }
+
+    .preview-wrap {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(255,255,255,0.72);
+      border: 2px solid var(--ink);
+      border-radius: 18px;
+      box-shadow: 6px 6px 0 rgba(17,24,39,.08);
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    #preview {
+      width: 100%;
+      aspect-ratio: 1;
+      border: 0;
+      border-radius: 14px;
+      background: #fffef7;
+    }
+
+    .pattern-card-grid {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 6px 2px 8px;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .pattern-card-grid::-webkit-scrollbar { display: none; }
+
+    .pattern-card {
+      flex: 0 0 auto;
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 58px;
+      height: 58px;
+      padding: 4px;
+      border-radius: 999px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    .pattern-card::before {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border-radius: 999px;
+      background: transparent;
+      transform: scale(0.78);
+      transition: transform 120ms ease, background 120ms ease;
+      z-index: 0;
+    }
+
+    .pattern-card:hover { transform: translate(-1px, -1px); }
+    .pattern-card:active { transform: translate(1px, 1px); }
+
+    .pattern-card canvas {
+      width: 42px;
+      height: 42px;
+      display: block;
+      border-radius: 0;
+      background: transparent;
+      position: relative;
+      z-index: 1;
+    }
+
+    .pattern-card span { display: none; }
+
+    .pattern-card.is-selected {
+      transform: scale(1.18);
+      filter: saturate(1.1);
+    }
+
+    .pattern-card.is-selected::before {
+      background: rgba(250, 204, 21, 0.34);
+      transform: scale(1);
+    }
+
+    .button-row-single {
+      grid-template-columns: 1fr;
+    }
+
+    .stacked-control-group {
+      gap: 14px;
+    }
+
+    .stacked-control {
+      display: grid;
+      gap: 8px;
+    }
+
+    .stacked-control + .stacked-control {
+      padding-top: 12px;
+      border-top: 2px solid rgba(17,24,39,.08);
+    }
+
+    .legend-strip {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .legend-chip {
+      height: 12px;
+      border-radius: 999px;
+      border: 2px solid var(--ink);
+    }
+
+    .sr-control {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .angle-dial-shell {
+      display: grid;
+      place-items: center;
+      padding: 4px 0 2px;
+    }
+
+    .angle-dial {
+      position: relative;
+      width: 94px;
+      height: 94px;
+      border-radius: 50%;
+      border: 3px solid var(--ink);
+      background:
+        radial-gradient(circle at 50% 48%, #fffef7 0 37%, #e9e2d1 37% 64%, #d8cfba 64% 100%);
+      box-shadow: 4px 4px 0 rgba(17,24,39,.12);
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .angle-dial::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      background:
+        repeating-conic-gradient(from -135deg, rgba(17,24,39,.94) 0 4deg, transparent 4deg 22deg);
+      -webkit-mask: radial-gradient(circle, transparent 0 60%, #000 61% 100%);
+      mask: radial-gradient(circle, transparent 0 60%, #000 61% 100%);
+      opacity: .92;
+    }
+
+    .angle-dial.is-dragging { cursor: grabbing; }
+
+    .angle-dial-pointer {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 36px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--yellow);
+      border: 2px solid var(--ink);
+      transform-origin: 6px 50%;
+      transform: translate(-6px, -50%) rotate(0deg);
+      box-shadow: none;
+    }
+
+    .angle-dial-core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--ink);
+      border: 3px solid #fffef7;
+      transform: translate(-50%, -50%);
+    }
+
+    .palette-picker {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      padding-top: 2px;
+    }
+
+    .palette-option {
+      height: 28px;
+      border-radius: 999px;
+      border: 3px solid var(--ink);
+      padding: 0;
+      box-shadow: none;
+      min-width: 0;
+    }
+
+    .palette-option:hover { transform: translate(-1px, -1px); }
+    .palette-option:active { transform: translate(1px, 1px); }
+    .palette-option.is-selected {
+      outline: 3px solid #fffef7;
+      box-shadow: 0 0 0 3px var(--ink);
+    }
+
+    .toggle {
+      position: relative;
+      display: inline-flex;
+      width: 62px;
+      height: 32px;
+      cursor: pointer;
+    }
+
+    .toggle input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .toggle-track {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 999px;
+      border: 2px solid var(--ink);
+      background: #fffef7;
+    }
+
+    .toggle-track::after {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 4px;
+      top: 4px;
+      border-radius: 4px;
+      background: var(--blue);
+      transition: transform 180ms ease;
+    }
+
+    .toggle input:checked + .toggle-track { background: rgba(37,99,235,.16); }
+    .toggle input:checked + .toggle-track::after { transform: translateX(28px); background: var(--red); }
+
+    .stage-shell {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 12px 12px 14px;
+      border-radius: 26px;
+      background:
+        linear-gradient(180deg, rgba(255,252,244,.96), rgba(247,242,228,.94)),
+        var(--paper);
+    }
+
+    .stage-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 2px 4px 12px;
+    }
+
+    .stage-title {
+      display: grid;
+      gap: 4px;
+    }
+
+    .stage-title strong {
+      font-size: 12px;
+      color: rgba(17,24,39,.62);
+    }
+
+    .stage-title span {
+      font-size: 30px;
+      font-weight: 900;
+      line-height: 1.02;
+      color: var(--ink);
+    }
+
+    .stage-badges {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      padding: 9px 12px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fffef7;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .stage-frame {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 3px solid var(--ink);
+      background: linear-gradient(180deg, #fff8ee 0%, #f6efdf 100%);
+    }
+
+    .stage-frame::before,
+    .stage-frame::after {
+      content: "";
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      z-index: 1;
+      pointer-events: none;
+      opacity: .92;
+    }
+
+    .stage-frame::before {
+      left: -90px;
+      top: -80px;
+      background: conic-gradient(from 130deg, var(--red), var(--red) 48%, transparent 48% 100%);
+      border-radius: 50%;
+    }
+
+    .stage-frame::after {
+      right: -110px;
+      bottom: -120px;
+      background: radial-gradient(circle, var(--yellow) 0 45%, transparent 46% 100%);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #stage { min-height: 100%; position: relative; z-index: 0; }
+
+    .stage-overlay {
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      bottom: 18px;
+      display: grid;
+      grid-template-columns: minmax(180px, 240px) 1fr;
+      gap: 12px;
+      align-items: end;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .stage-overlay { display: none; }
+
+    .overlay-card {
+      padding: 12px 14px;
+      border-radius: 18px;
+      border: 2px solid var(--ink);
+      background: rgba(11,11,11,.92);
+      color: #fff7da;
+      font-size: 12px;
+      line-height: 1.55;
+      box-shadow: 8px 8px 0 rgba(17,24,39,.16);
+    }
+
+    .overlay-card strong { display: block; margin-bottom: 4px; }
+
+    .status-row { color: rgba(17,24,39,.68); }
+    .panel { overflow-y: auto; overscroll-behavior: contain; }
+    .panel-footer { margin-top: auto; display: grid; gap: 12px; }
+    .is-hidden { display: none !important; }
+
+    .intro-merge {
+      gap: 12px;
+      margin-top: 62px;
+    }
+
+    .intro-merge-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .intro-merge-copy {
+      max-width: 180px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 12px;
+    }
+
+    @media (max-width: 1320px) {
+      body { overflow: auto; }
+      .shell { grid-template-columns: 1fr; min-height: auto; }
+      .panel-header { margin-top: 62px; }
+      .stage-shell { min-height: 62vh; }
+      .stage-overlay { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="panel panel-left" data-player="P1 ●">
+      <div class="control-group intro-merge">
+        <span class="eyebrow">Geometry Conductor</span>
+        <h1>几何树调度台</h1>
+        <div class="intro-merge-row">
+          <strong>挑战模式</strong>
+          <span class="value-chip" id="challengeModeValue">开启</span>
+          <label class="toggle" aria-label="挑战模式开关">
+            <input id="challengeMode" type="checkbox" checked />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="intro-merge-copy">先亮 3 层，命中后继续生长。</div>
+      </div>
+
+      <div class="control-group" id="treeDepthGroup">
+        <div class="label-row"><strong>层级</strong><span class="value-chip" id="treeDepthValue">6</span></div>
+        <input id="treeDepth" type="range" min="1" max="8" step="1" value="6" />
+      </div>
+
+      <div class="control-group">
+        <div class="label-row"><strong>角度</strong><span class="value-chip" id="treeAngleValue">30°</span></div>
+        <div class="angle-dial-shell">
+          <div id="treeAngleDial" class="angle-dial" role="slider" tabindex="0" aria-label="树角度旋钮" aria-valuemin="20" aria-valuemax="70" aria-valuenow="30">
+            <span id="treeAnglePointer" class="angle-dial-pointer"></span>
+            <span class="angle-dial-core"></span>
+          </div>
+        </div>
+        <input id="treeAngle" class="sr-control" type="range" min="20" max="70" step="1" value="30" />
+      </div>
+
+      <div class="control-group">
+        <div class="label-row"><strong>色带</strong><span class="value-chip" id="treePaletteValue">暖金</span></div>
+        <input id="treePalette" class="sr-control" type="range" min="0" max="4" step="1" value="2" />
+        <div id="treePalettePicker" class="palette-picker" aria-label="选择树的色带">
+          <button type="button" class="palette-option" data-palette-index="0" aria-label="冷海蓝" style="background:#2563eb"></button>
+          <button type="button" class="palette-option" data-palette-index="1" aria-label="霓虹" style="background:#ef4444"></button>
+          <button type="button" class="palette-option" data-palette-index="2" aria-label="暖金" style="background:#f97316"></button>
+          <button type="button" class="palette-option" data-palette-index="3" aria-label="极简白蓝" style="background:#111827"></button>
+          <button type="button" class="palette-option" data-palette-index="4" aria-label="夜景冷光" style="background:#facc15"></button>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button id="treeResetBtn" class="secondary-btn">回到开场</button>
+        <button id="treePulseBtn" class="secondary-btn">角度摆动</button>
+      </div>
+
+      <button id="celebrationBtn" class="primary-btn full-width-btn">测试满血结算秀</button>
+
+      <div class="hint">
+        <strong>Player 1 Tip</strong>
+        这一版强调清晰的图形构成感，比较适合把树调成“海报中心图腾”的状态。
+      </div>
+    </aside>
+
+    <main class="stage-shell">
+      <div class="stage-head">
+        <div class="stage-title">
+          <strong>Fractal Poster Arena</strong>
+          <span>双人几何剧场</span>
+        </div>
+        <div class="stage-badges">
+          <span class="badge" id="stageTreeBadge">树: 6 层 / 30°</span>
+          <span class="badge" id="stageSkyBadge">天空: 0 枚漂浮图案</span>
+        </div>
+      </div>
+
+      <div class="stage-frame" id="stageFrame">
+        <canvas id="stage"></canvas>
+        <div class="stage-overlay">
+          <div class="overlay-card">
+            <strong>协作规则</strong>
+            玩家 1 定义树的结构节奏，玩家 2 把几何元素像展签吊饰一样送进舞台，最后一起把树养满。
+          </div>
+          <div class="overlay-card" id="feedCard">
+            <strong>舞台状态</strong>
+            几何剧场已经就绪。先让左边定住树的节奏，再从右侧送图案进来。
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel panel-right" data-player="P2 ●">
+      <div class="panel-header">
+        <span class="eyebrow">Falling Shapes</span>
+        <h2>掉落图案控制台</h2>
+        <small>先选图案，再送进舞台。</small>
+      </div>
+
+      <div class="preview-wrap">
+        <div class="preview-header">
+          <strong>图案预览</strong>
+          <span class="value-chip" id="patternNameValue">Koch 雪花</span>
+        </div>
+        <canvas id="preview" width="220" height="220"></canvas>
+        <div class="pattern-card-grid" id="patternCardGrid">
+          <button class="pattern-card is-selected" type="button" data-pattern="koch" aria-label="Koch 雪花" title="Koch 雪花">
+            <canvas width="64" height="64"></canvas>
+          </button>
+          <button class="pattern-card" type="button" data-pattern="sierpinski" aria-label="谢尔宾斯基三角" title="谢尔宾斯基三角">
+            <canvas width="64" height="64"></canvas>
+          </button>
+          <button class="pattern-card" type="button" data-pattern="phyllotaxis" aria-label="葵花螺旋" title="葵花螺旋">
+            <canvas width="64" height="64"></canvas>
+          </button>
+          <button class="pattern-card" type="button" data-pattern="hypotrochoid" aria-label="滚轮曲线" title="滚轮曲线">
+            <canvas width="64" height="64"></canvas>
+          </button>
+          <button class="pattern-card" type="button" data-pattern="penrose" aria-label="Penrose 准晶" title="Penrose 准晶">
+            <canvas width="64" height="64"></canvas>
+          </button>
+        </div>
+        <select id="patternSelect" hidden>
+          <option value="koch">Koch 雪花</option>
+          <option value="sierpinski">谢尔宾斯基三角</option>
+          <option value="phyllotaxis">葵花螺旋</option>
+          <option value="hypotrochoid">Spirograph 滚轮曲线</option>
+          <option value="penrose">Penrose 准晶</option>
+        </select>
+      </div>
+
+      <div class="control-group stacked-control-group">
+        <div class="stacked-control">
+          <div class="label-row"><strong>数量层级</strong><span class="value-chip" id="patternLevelValue">3</span></div>
+          <input id="patternLevel" type="range" min="2" max="4" step="1" value="3" />
+        </div>
+        <div class="stacked-control">
+          <div class="label-row"><strong id="paramALabel">雪峰角</strong><span class="value-chip" id="paramAValue">60°</span></div>
+          <input id="paramA" type="range" min="54" max="66" step="1" value="60" />
+        </div>
+      </div>
+      <div style="display:none" aria-hidden="true">
+        <span id="paramBLabel">构图占比</span>
+        <span id="paramBValue">72/100</span>
+        <input id="paramB" type="range" min="66" max="82" step="1" value="72" />
+      </div>
+
+      <div class="button-row button-row-single">
+        <button id="sendBtn" class="primary-btn">发送到天空</button>
+      </div>
+      <button id="clearSkyBtn" class="secondary-btn sr-control" tabindex="-1" aria-hidden="true">清空</button>
+
+      <div class="status-row">
+        <span>预览：<strong id="previewStatus">Koch 雪花</strong></span>
+        <span>缓存：<strong id="cacheStatus">0</strong></span>
+      </div>
+
+      <div class="mini-note" id="patternHint">这一版比较适合选轮廓明确的图案，掉下来以后会有很强的图形秩序感。</div>
+
+      <div class="panel-footer">
+        <div class="hint">
+          <strong>Player 2 Tip</strong>
+          连续发送会让舞台更像一张动态构成海报，尤其适合把三角、螺旋和方块节奏混在一起。
+        </div>
+      </div>
+    </aside>
+  </div>
+<script>
+    const paletteBank = [
+      { key: 'cool', name: '冷海蓝', colors: ['#7dd3fc', '#3b82f6', '#67e8f9', '#a5f3fc'] },
+      { key: 'neon', name: '霓虹', colors: ['#fb7185', '#f43f5e', '#e879f9', '#38bdf8'] },
+      { key: 'warm', name: '暖金', colors: ['#fde68a', '#fb923c', '#f97316', '#ea580c'] },
+      { key: 'mono', name: '极简白蓝', colors: ['#e2e8f0', '#a5b4fc', '#c7d2fe', '#93c5fd'] },
+      { key: 'cosmic', name: '夜景冷光', colors: ['#93c5fd', '#a78bfa', '#f472b6', '#67e8f9'] }
+    ];
+
+    const player2Profiles = {
+      koch: {
+        name: 'Koch 雪花',
+        hint: '轮廓清楚，适合做第一种被送进天空的小雪片。',
+        level: { min: 2, max: 4, value: 3 },
+        paramA: { label: '雪峰角', min: 54, max: 66, step: 1, value: 60, unit: '°' },
+        paramB: { label: '构图占比', min: 68, max: 82, step: 1, value: 74, unit: '/100' }
+      },
+      sierpinski: {
+        name: '谢尔宾斯基三角',
+        hint: '正三角会随着旋转在空中翻面，适合和树形成清晰对比。',
+        level: { min: 3, max: 6, value: 4 },
+        paramA: { label: '朝向', min: 0, max: 120, step: 1, value: 18, unit: '°' },
+        paramB: { label: '密度', min: 74, max: 88, step: 1, value: 82, unit: '/100' }
+      },
+      phyllotaxis: {
+        name: '葵花螺旋',
+        hint: '这是天空里最柔和的点阵图案，适合连续发送形成花粉风。',
+        level: { min: 4, max: 8, value: 6 },
+        paramA: { label: '发散角', min: 134, max: 140, step: 1, value: 137, unit: '°' },
+        paramB: { label: '点密度', min: 68, max: 78, step: 1, value: 72, unit: '/100' }
+      },
+      hypotrochoid: {
+        name: 'Spirograph 滚轮曲线',
+        hint: '更像编织花环，层级太高反而会挤，所以只留最有效的旋转区间。',
+        level: { min: 4, max: 7, value: 5 },
+        paramA: { label: '滚动偏移', min: 104, max: 128, step: 1, value: 114, unit: '°' },
+        paramB: { label: '轮比尺度', min: 68, max: 76, step: 1, value: 72, unit: '/100' }
+      },
+      penrose: {
+        name: 'Penrose 准晶',
+        hint: '更适合少量高质地出现，所以默认层数和参数区间都被有意识地压低了。',
+        level: { min: 2, max: 4, value: 3 },
+        paramA: { label: '扭转角', min: 14, max: 28, step: 1, value: 18, unit: '°' },
+        paramB: { label: '层间缩放', min: 68, max: 76, step: 1, value: 72, unit: '/100' }
+      }
+    };
+
+    const spritePaletteOffsets = {
+      koch: 1,
+      sierpinski: 0,
+      phyllotaxis: 2,
+      hypotrochoid: 3,
+      penrose: 4
+    };
+
+    const treeDefaults = { depth: 6, angle: 30, paletteIndex: 2 };
+    const treeMaxDepth = 8;
+    const treeChallengeBaseDepth = 3;
+    const treeDecayInterval = 5.4;
+    const treeGrowthPerHit = 3;
+    const state = {
+      tree: { ...treeDefaults, challengeMode: true },
+      player2: {
+        pattern: 'koch',
+        level: 3,
+        paramA: 60,
+        paramB: 74
+      },
+      stage: { width: 0, height: 0, dpr: 1 },
+      treeNeedsRender: true,
+      previewNeedsRender: true,
+      previewTask: null,
+      previewRequestId: 0,
+      lastTime: performance.now(),
+      elapsed: 0,
+      sprites: [],
+      spriteCache: new Map(),
+      treeCollisionNodes: [],
+      treeNodes: [],
+      treeVisibleIds: new Set(),
+      treeRevealOrder: [],
+      treeIdleTimer: 0,
+      sendCount: 0,
+      spawnLane: 0,
+      treePulse: 0,
+      treeSwayTime: 0,
+      treeSwayDuration: 0,
+      treeSwayOriginAngle: treeDefaults.angle,
+      treeGeometryAngle: treeDefaults.angle,
+      treeGeometryCache: new Map(),
+      fullTreeCelebrated: false,
+      controlsLocked: false,
+      fragments: [],
+      stars: [],
+      celebration: {
+        active: false,
+        loading: false,
+        time: 0,
+        duration: 7.8,
+        phase: 'idle',
+        alignTime: 0,
+        alignDuration: 0.95,
+        alignStartAngle: treeDefaults.angle,
+        targetAngle: 45,
+        collapseTimer: 0,
+        collapseInterval: 0.52,
+        nextLaunch: 0,
+        launches: 0,
+        rockets: [],
+        particles: [],
+        bursts: [],
+        assets: [],
+        flash: 0
+      },
+      audio: {
+        ctx: null,
+        master: null,
+        musicBus: null,
+        sfxBus: null,
+        musicStarted: false,
+        musicNextTime: 0
+      }
+    };
+
+    const dom = {
+      stage: document.getElementById('stage'),
+      stageFrame: document.getElementById('stageFrame'),
+      preview: document.getElementById('preview'),
+      challengeMode: document.getElementById('challengeMode'),
+      challengeModeValue: document.getElementById('challengeModeValue'),
+      treeDepthGroup: document.getElementById('treeDepthGroup'),
+      treeDepth: document.getElementById('treeDepth'),
+      treeAngle: document.getElementById('treeAngle'),
+      treeAngleDial: document.getElementById('treeAngleDial'),
+      treeAnglePointer: document.getElementById('treeAnglePointer'),
+      treePalette: document.getElementById('treePalette'),
+      treePalettePicker: document.getElementById('treePalettePicker'),
+      treeDepthValue: document.getElementById('treeDepthValue'),
+      treeAngleValue: document.getElementById('treeAngleValue'),
+      treePaletteValue: document.getElementById('treePaletteValue'),
+      treeResetBtn: document.getElementById('treeResetBtn'),
+      treePulseBtn: document.getElementById('treePulseBtn'),
+      celebrationBtn: document.getElementById('celebrationBtn'),
+      patternSelect: document.getElementById('patternSelect'),
+      patternCardGrid: document.getElementById('patternCardGrid'),
+      patternNameValue: document.getElementById('patternNameValue'),
+      patternLevel: document.getElementById('patternLevel'),
+      patternLevelValue: document.getElementById('patternLevelValue'),
+      paramALabel: document.getElementById('paramALabel'),
+      paramA: document.getElementById('paramA'),
+      paramAValue: document.getElementById('paramAValue'),
+      paramBLabel: document.getElementById('paramBLabel'),
+      paramB: document.getElementById('paramB'),
+      paramBValue: document.getElementById('paramBValue'),
+      sendBtn: document.getElementById('sendBtn'),
+      clearSkyBtn: document.getElementById('clearSkyBtn'),
+      previewStatus: document.getElementById('previewStatus'),
+      cacheStatus: document.getElementById('cacheStatus'),
+      patternHint: document.getElementById('patternHint'),
+      stageTreeBadge: document.getElementById('stageTreeBadge'),
+      stageSkyBadge: document.getElementById('stageSkyBadge'),
+      feedCard: document.getElementById('feedCard')
+    };
+
+    const stageCtx = dom.stage.getContext('2d', { alpha: false, desynchronized: true });
+    const previewCtx = dom.preview.getContext('2d');
+    let patternCardRenderId = 0;
+    const treeBuffer = document.createElement('canvas');
+    const treeBufferCtx = treeBuffer.getContext('2d');
+
+    function ensureAudioContext() {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) return null;
+      if (!state.audio.ctx) {
+        const ctx = new AudioCtor();
+        const master = ctx.createGain();
+        const musicBus = ctx.createGain();
+        const sfxBus = ctx.createGain();
+        master.gain.value = 0.34;
+        musicBus.gain.value = 0.18;
+        sfxBus.gain.value = 0.92;
+        musicBus.connect(master);
+        sfxBus.connect(master);
+        master.connect(ctx.destination);
+        state.audio.ctx = ctx;
+        state.audio.master = master;
+        state.audio.musicBus = musicBus;
+        state.audio.sfxBus = sfxBus;
+      }
+      if (state.audio.ctx.state === 'suspended') {
+        state.audio.ctx.resume().catch(() => {});
+      }
+      if (!state.audio.musicStarted) {
+        state.audio.musicStarted = true;
+        state.audio.musicNextTime = state.audio.ctx.currentTime + 0.08;
+      }
+      return state.audio.ctx;
+    }
+
+    function connectWithPan(ctx, sourceNode, destination, pan = 0) {
+      if (typeof StereoPannerNode !== 'undefined') {
+        const panner = new StereoPannerNode(ctx, { pan: clamp(pan, -1, 1) });
+        sourceNode.connect(panner);
+        panner.connect(destination);
+        return panner;
+      }
+      sourceNode.connect(destination);
+      return destination;
+    }
+
+    function scheduleTone({ time, frequency, duration, gain, type = 'sine', pan = 0, bus = 'sfx', attack = 0.01, release = 0.14, detune = 0 }) {
+      const ctx = state.audio.ctx;
+      const destination = bus === 'music' ? state.audio.musicBus : state.audio.sfxBus;
+      if (!ctx || !destination) return;
+      const oscillator = ctx.createOscillator();
+      const envelope = ctx.createGain();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, time);
+      oscillator.detune.setValueAtTime(detune, time);
+      envelope.gain.setValueAtTime(0.0001, time);
+      envelope.gain.linearRampToValueAtTime(gain, time + attack);
+      envelope.gain.exponentialRampToValueAtTime(0.0001, time + duration + release);
+      oscillator.connect(envelope);
+      connectWithPan(ctx, envelope, destination, pan);
+      oscillator.start(time);
+      oscillator.stop(time + duration + release + 0.04);
+    }
+
+    function scheduleSweep({ time, startFreq, endFreq, duration, gain, pan = 0, bus = 'sfx', type = 'sine' }) {
+      const ctx = state.audio.ctx;
+      const destination = bus === 'music' ? state.audio.musicBus : state.audio.sfxBus;
+      if (!ctx || !destination) return;
+      const oscillator = ctx.createOscillator();
+      const envelope = ctx.createGain();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(startFreq, time);
+      oscillator.frequency.exponentialRampToValueAtTime(Math.max(60, endFreq), time + duration);
+      envelope.gain.setValueAtTime(0.0001, time);
+      envelope.gain.linearRampToValueAtTime(gain, time + 0.02);
+      envelope.gain.exponentialRampToValueAtTime(0.0001, time + duration + 0.12);
+      oscillator.connect(envelope);
+      connectWithPan(ctx, envelope, destination, pan);
+      oscillator.start(time);
+      oscillator.stop(time + duration + 0.16);
+    }
+
+    function playImpactSound(pan = 0) {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime + 0.005;
+      scheduleTone({ time: now, frequency: 540 + Math.random() * 80, duration: 0.12, gain: 0.065, type: 'triangle', pan });
+      scheduleTone({ time: now + 0.018, frequency: 860 + Math.random() * 110, duration: 0.08, gain: 0.032, type: 'sine', pan, detune: -4 });
+    }
+
+    function playLaunchSound(pan = 0) {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+      scheduleSweep({
+        time: ctx.currentTime + 0.01,
+        startFreq: 220,
+        endFreq: 620,
+        duration: 0.34,
+        gain: 0.03,
+        pan,
+        type: 'triangle'
+      });
+    }
+
+    function playBurstSound(pan = 0) {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime + 0.01;
+      scheduleTone({ time: now, frequency: 320 + Math.random() * 70, duration: 0.22, gain: 0.04, type: 'square', pan });
+      scheduleTone({ time: now + 0.015, frequency: 620 + Math.random() * 120, duration: 0.18, gain: 0.028, type: 'triangle', pan: pan * 0.7 });
+      scheduleTone({ time: now + 0.03, frequency: 980 + Math.random() * 220, duration: 0.12, gain: 0.018, type: 'sine', pan: pan * 0.5 });
+    }
+
+    function scheduleBackgroundMusic() {
+      const ctx = state.audio.ctx;
+      if (!ctx || !state.audio.musicStarted || !state.audio.musicBus) return;
+      const motif = [
+        { offset: 0.00, ratio: 1, length: 0.38, gain: 0.0105 },
+        { offset: 0.28, ratio: 1.25, length: 0.3, gain: 0.0082 },
+        { offset: 0.58, ratio: 1.5, length: 0.34, gain: 0.009 },
+        { offset: 0.94, ratio: 1.25, length: 0.26, gain: 0.0074 }
+      ];
+      while (state.audio.musicNextTime < ctx.currentTime + 0.55) {
+        const base = 196 + (state.tree.paletteIndex % 2) * 24;
+        const start = state.audio.musicNextTime;
+        scheduleTone({ time: start, frequency: base * 0.5, duration: 0.72, gain: 0.0048, type: 'sine', bus: 'music', attack: 0.08, release: 0.28 });
+        for (const note of motif) {
+          scheduleTone({
+            time: start + note.offset,
+            frequency: base * note.ratio,
+            duration: note.length,
+            gain: note.gain,
+            type: 'triangle',
+            bus: 'music',
+            attack: 0.035,
+            release: 0.2
+          });
+        }
+        state.audio.musicNextTime += 1.56;
+      }
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function hexToRgb(hex) {
+      const clean = hex.replace('#', '');
+      const normalized = clean.length === 3 ? clean.split('').map((x) => x + x).join('') : clean;
+      const bigint = parseInt(normalized, 16);
+      return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255
+      };
+    }
+
+    function paletteOf(t, paletteIndex) {
+      const palette = paletteBank[paletteIndex] || paletteBank[0];
+      const colors = palette.colors;
+      const p = clamp(t, 0, 1);
+      const total = colors.length - 1;
+      const x = p * total;
+      const i = Math.min(total - 1, Math.floor(x));
+      const f = x - i;
+      const a = hexToRgb(colors[i]);
+      const b = hexToRgb(colors[i + 1]);
+      return `rgb(${Math.round(a.r + (b.r - a.r) * f)}, ${Math.round(a.g + (b.g - a.g) * f)}, ${Math.round(a.b + (b.b - a.b) * f)})`;
+    }
+
+    function withAlpha(color, alpha) {
+      if (color.startsWith('rgb(')) {
+        return color.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
+      }
+      return color;
+    }
+
+    function rotateVector(x, y, angle) {
+      return {
+        x: x * Math.cos(angle) - y * Math.sin(angle),
+        y: x * Math.sin(angle) + y * Math.cos(angle)
+      };
+    }
+
+    function rotatePointAround(x, y, cx, cy, angle) {
+      const dx = x - cx;
+      const dy = y - cy;
+      return {
+        x: cx + dx * Math.cos(angle) - dy * Math.sin(angle),
+        y: cy + dx * Math.sin(angle) + dy * Math.cos(angle)
+      };
+    }
+
+    function drawGradientPath(ctx, points, paletteIndex, widthBase, alpha = 0.92, closed = false) {
+      if (points.length < 2) return;
+      for (let i = 1; i < points.length; i++) {
+        const t = i / (points.length - 1);
+        ctx.beginPath();
+        ctx.moveTo(points[i - 1].x, points[i - 1].y);
+        ctx.lineTo(points[i].x, points[i].y);
+        ctx.strokeStyle = withAlpha(paletteOf(t, paletteIndex), alpha);
+        ctx.lineWidth = widthBase * (0.86 + t * 0.48);
+        ctx.stroke();
+      }
+      if (closed) {
+        ctx.beginPath();
+        ctx.moveTo(points[points.length - 1].x, points[points.length - 1].y);
+        ctx.lineTo(points[0].x, points[0].y);
+        ctx.strokeStyle = withAlpha(paletteOf(1, paletteIndex), alpha);
+        ctx.lineWidth = widthBase * 1.08;
+        ctx.stroke();
+      }
+    }
+
+    function fitPoints(points, width, height, paddingRatio) {
+      if (!points.length) return [];
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const point of points) {
+        minX = Math.min(minX, point.x);
+        minY = Math.min(minY, point.y);
+        maxX = Math.max(maxX, point.x);
+        maxY = Math.max(maxY, point.y);
+      }
+      const spanX = Math.max(1, maxX - minX);
+      const spanY = Math.max(1, maxY - minY);
+      const usableW = width * (1 - paddingRatio * 2);
+      const usableH = height * (1 - paddingRatio * 2);
+      const scale = Math.min(usableW / spanX, usableH / spanY);
+      const offsetX = (width - spanX * scale) / 2 - minX * scale;
+      const offsetY = (height - spanY * scale) / 2 - minY * scale;
+      return points.map((point) => ({ x: point.x * scale + offsetX, y: point.y * scale + offsetY }));
+    }
+
+    function gcd(a, b) {
+      let x = Math.abs(Math.round(a));
+      let y = Math.abs(Math.round(b));
+      while (y) {
+        const t = x % y;
+        x = y;
+        y = t;
+      }
+      return x || 1;
+    }
+
+    function measureStage() {
+      const rect = dom.stageFrame.getBoundingClientRect();
+      state.stage.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      state.stage.width = Math.max(1, Math.floor(rect.width));
+      state.stage.height = Math.max(1, Math.floor(rect.height));
+      dom.stage.width = Math.floor(state.stage.width * state.stage.dpr);
+      dom.stage.height = Math.floor(state.stage.height * state.stage.dpr);
+      dom.stage.style.width = `${state.stage.width}px`;
+      dom.stage.style.height = `${state.stage.height}px`;
+      stageCtx.setTransform(state.stage.dpr, 0, 0, state.stage.dpr, 0, 0);
+      treeBuffer.width = dom.stage.width;
+      treeBuffer.height = dom.stage.height;
+      treeBufferCtx.setTransform(state.stage.dpr, 0, 0, state.stage.dpr, 0, 0);
+      state.treeGeometryCache.clear();
+      state.celebration.assets = [];
+      seedStars();
+      state.treeNeedsRender = true;
+    }
+
+    function seedStars() {
+      const count = Math.max(10, Math.floor(state.stage.width / 150));
+      const stars = [];
+      for (let i = 0; i < count; i++) {
+        const laneWidth = state.stage.width / (count + 1);
+        const baseX = laneWidth * (i + 1);
+        stars.push({
+          x: baseX + (Math.random() - 0.5) * laneWidth * 0.34,
+          y: state.stage.height * (0.1 + Math.random() * 0.28),
+          radius: Math.random() * 1.8 + 0.3,
+          alpha: Math.random() * 0.4 + 0.18,
+          drift: (Math.random() - 0.5) * 8
+        });
+      }
+      state.stars = stars;
+    }
+
+    function isTreeFull() {
+      return state.treeNodes.length > 0 && state.treeVisibleIds.size === state.treeNodes.length;
+    }
+
+    function displayedTreeAngle() {
+      if (state.treeSwayDuration <= 0) return state.tree.angle;
+      const path = [state.treeSwayOriginAngle, 20, 70, 20, 70, state.treeSwayOriginAngle];
+      const progress = clamp(state.treeSwayTime / state.treeSwayDuration, 0, 1);
+      const scaled = progress * (path.length - 1);
+      const index = Math.min(path.length - 2, Math.floor(scaled));
+      const local = scaled - index;
+      const eased = local * local * (3 - 2 * local);
+      return path[index] + (path[index + 1] - path[index]) * eased;
+    }
+
+    function updateCelebrationButtonLabel() {
+      dom.celebrationBtn.textContent = state.controlsLocked
+        ? '满血结算进行中...'
+        : (isTreeFull() ? '测试满血结算秀（当前已满血）' : '测试满血结算秀');
+    }
+
+    function updateAngleDial() {
+      if (!dom.treeAnglePointer || !dom.treeAngleDial) return;
+      const progress = (state.tree.angle - 20) / 50;
+      const angle = -135 + progress * 270;
+      dom.treeAnglePointer.style.transform = `translate(-6px, -50%) rotate(${angle}deg)`;
+      dom.treeAngleDial.setAttribute('aria-valuenow', String(Math.round(state.tree.angle)));
+    }
+
+    function updatePalettePicker() {
+      if (!dom.treePalettePicker) return;
+      const options = dom.treePalettePicker.querySelectorAll('.palette-option');
+      for (const option of options) {
+        option.classList.toggle('is-selected', Number(option.dataset.paletteIndex) === state.tree.paletteIndex);
+      }
+    }
+
+    function cardPaletteIndex(pattern) {
+      const vividPalettes = {
+        koch: 2,
+        sierpinski: 2,
+        phyllotaxis: 1,
+        hypotrochoid: 0,
+        penrose: 1
+      };
+      return vividPalettes[pattern] ?? 2;
+    }
+
+    function updatePatternCardSelection() {
+      if (!dom.patternCardGrid) return;
+      dom.patternCardGrid.querySelectorAll('.pattern-card').forEach((card) => {
+        card.classList.toggle('is-selected', card.dataset.pattern === state.player2.pattern);
+      });
+    }
+
+    async function renderPatternCards() {
+      if (!dom.patternCardGrid) return;
+      const requestId = ++patternCardRenderId;
+      const cards = [...dom.patternCardGrid.querySelectorAll('.pattern-card')];
+      await Promise.all(cards.map(async (card) => {
+        const pattern = card.dataset.pattern;
+        const canvas = card.querySelector('canvas');
+        if (!pattern || !canvas) return;
+        const ctx = canvas.getContext('2d');
+        const profile = player2Profiles[pattern];
+        const asset = await getSpriteAsset({
+          pattern,
+          level: profile.level.value,
+          paramA: profile.paramA.value,
+          paramB: profile.paramB.value
+        }, cardPaletteIndex(pattern));
+        if (requestId !== patternCardRenderId) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fffef7';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const size = canvas.width * 0.9;
+        const x = (canvas.width - size) / 2;
+        const y = (canvas.height - size) / 2;
+        ctx.filter = 'saturate(2.8) contrast(1.5) brightness(0.96)';
+        ctx.drawImage(asset.source, x, y, size, size);
+        ctx.drawImage(asset.source, x, y, size, size);
+        ctx.filter = 'none';
+      }));
+      if (requestId === patternCardRenderId) {
+        updatePatternCardSelection();
+      }
+    }
+
+    function setControlsLocked(locked) {
+      state.controlsLocked = locked;
+      const controls = [
+        dom.challengeMode,
+        dom.treeDepth,
+        dom.treeAngle,
+        dom.treePalette,
+        dom.treeResetBtn,
+        dom.treePulseBtn,
+        dom.celebrationBtn,
+        dom.patternSelect,
+        dom.patternLevel,
+        dom.paramA,
+        dom.paramB,
+        dom.sendBtn,
+        dom.clearSkyBtn
+      ];
+      if (dom.patternCardGrid) {
+        dom.patternCardGrid.querySelectorAll('.pattern-card').forEach((card) => controls.push(card));
+      }
+      for (const control of controls) {
+        control.disabled = locked;
+      }
+      updateCelebrationButtonLabel();
+    }
+
+    function updateTreeLabels() {
+      dom.treeDepthValue.textContent = state.tree.depth;
+      dom.treeAngleValue.textContent = `${Math.round(state.tree.angle)}°`;
+      dom.treePaletteValue.textContent = paletteBank[state.tree.paletteIndex].name;
+      dom.challengeMode.checked = state.tree.challengeMode;
+      dom.challengeModeValue.textContent = state.tree.challengeMode ? '开启' : '关闭';
+      dom.treeDepthGroup.classList.toggle('is-hidden', state.tree.challengeMode);
+      if (state.controlsLocked) {
+        dom.stageTreeBadge.textContent = `树: 结算中 / ${Math.round(state.tree.angle)}° / ${paletteBank[state.tree.paletteIndex].name}`;
+      } else if (state.tree.challengeMode) {
+        const visibleCount = Math.max(0, state.treeVisibleIds.size - countBaseVisibleNodes());
+        dom.stageTreeBadge.textContent = isTreeFull() ? `树: 满血 / ${Math.round(state.tree.angle)}° / ${paletteBank[state.tree.paletteIndex].name}` : `树: 挑战 / 已长出 ${visibleCount} 枝 / ${Math.round(state.tree.angle)}°`;
+      } else {
+        dom.stageTreeBadge.textContent = `树: ${state.tree.depth} 层 / ${Math.round(state.tree.angle)}° / ${paletteBank[state.tree.paletteIndex].name}`;
+      }
+      updateAngleDial();
+      updatePalettePicker();
+      updateCelebrationButtonLabel();
+    }
+
+    function treeAnchorPosition() {
+      return {
+        x: state.stage.width / 2,
+        y: state.stage.height * 0.88
+      };
+    }
+
+    function countBaseVisibleNodes() {
+      return state.treeNodes.filter((node) => node.depth <= treeChallengeBaseDepth).length;
+    }
+
+    function visibleTreeDepth() {
+      let maxDepth = 0;
+      for (const id of state.treeVisibleIds) {
+        const node = state.treeNodes[id];
+        if (node) maxDepth = Math.max(maxDepth, node.depth);
+      }
+      return maxDepth;
+    }
+
+    function syncVisibleCollisionNodes() {
+      const sorted = [...state.treeVisibleIds].sort((a, b) => state.treeNodes[a].depth - state.treeNodes[b].depth);
+      state.treeCollisionNodes = [];
+      for (const id of sorted) {
+        const node = state.treeNodes[id];
+        if (node && node.side > 9) {
+          state.treeCollisionNodes.push({
+            x: node.center.x,
+            y: node.center.y,
+            r: node.side * 0.44
+          });
+        }
+      }
+    }
+
+    function formatProfileValue(value, unit) {
+      if (unit === '/100') return `${value}/100`;
+      return `${value}${unit || ''}`;
+    }
+
+    function syncPlayer2Controls() {
+      const profile = player2Profiles[state.player2.pattern];
+      dom.patternNameValue.textContent = profile.name;
+      dom.previewStatus.textContent = profile.name;
+      dom.patternHint.textContent = profile.hint;
+      dom.patternLevel.min = profile.level.min;
+      dom.patternLevel.max = profile.level.max;
+      dom.patternLevel.step = 1;
+      state.player2.level = clamp(state.player2.level, profile.level.min, profile.level.max);
+      dom.patternLevel.value = state.player2.level;
+      dom.patternLevelValue.textContent = state.player2.level;
+      dom.paramALabel.textContent = profile.paramA.label;
+      dom.paramA.min = profile.paramA.min;
+      dom.paramA.max = profile.paramA.max;
+      dom.paramA.step = profile.paramA.step;
+      state.player2.paramA = clamp(state.player2.paramA, profile.paramA.min, profile.paramA.max);
+      dom.paramA.value = state.player2.paramA;
+      dom.paramAValue.textContent = formatProfileValue(state.player2.paramA, profile.paramA.unit);
+      dom.paramBLabel.textContent = profile.paramB.label;
+      dom.paramB.min = profile.paramB.min;
+      dom.paramB.max = profile.paramB.max;
+      dom.paramB.step = profile.paramB.step;
+      state.player2.paramB = clamp(state.player2.paramB, profile.paramB.min, profile.paramB.max);
+      dom.paramB.value = state.player2.paramB;
+      dom.paramBValue.textContent = formatProfileValue(state.player2.paramB, profile.paramB.unit);
+      updatePatternCardSelection();
+      void renderPatternCards();
+      state.previewNeedsRender = true;
+    }
+
+    function applyPlayer2Profile(pattern) {
+      const profile = player2Profiles[pattern];
+      state.player2.pattern = pattern;
+      state.player2.level = profile.level.value;
+      state.player2.paramA = profile.paramA.value;
+      state.player2.paramB = profile.paramB.value;
+      dom.patternSelect.value = pattern;
+      syncPlayer2Controls();
+    }
+
+    function squareTree(ctx, p0, p1, depth, maxDepth, paletteIndex, lineScale, collisionNodes) {
+      if (depth <= 0) return;
+      const vx = p1.x - p0.x;
+      const vy = p1.y - p0.y;
+      const up = { x: vy, y: -vx };
+      const p2 = { x: p1.x + up.x, y: p1.y + up.y };
+      const p3 = { x: p0.x + up.x, y: p0.y + up.y };
+      const side = Math.hypot(vx, vy);
+      const t = clamp((maxDepth - depth) / Math.max(1, maxDepth - 1), 0, 1);
+      const fill = paletteOf(t, paletteIndex);
+      const stroke = withAlpha(fill, 0.44);
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.closePath();
+      ctx.fillStyle = withAlpha(fill, 0.78);
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineScale * (0.48 + depth / (maxDepth + 1));
+      ctx.shadowColor = withAlpha(fill, 0.32);
+      ctx.shadowBlur = 18;
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      if (collisionNodes && side > 9) {
+        collisionNodes.push({
+          x: (p0.x + p2.x) / 2,
+          y: (p0.y + p2.y) / 2,
+          r: side * 0.44
+        });
+      }
+      if (depth === 1) return;
+      const angle = clamp((state.tree.angle * Math.PI) / 180, Math.PI / 12, Math.PI / 2.08);
+      const leftEdge = rotateVector(vx, vy, -angle);
+      const apex = {
+        x: p3.x + leftEdge.x * Math.cos(angle),
+        y: p3.y + leftEdge.y * Math.cos(angle)
+      };
+      squareTree(ctx, p3, apex, depth - 1, maxDepth, paletteIndex, lineScale, collisionNodes);
+      squareTree(ctx, apex, p2, depth - 1, maxDepth, paletteIndex, lineScale, collisionNodes);
+    }
+
+    function renderTreeLayer() {
+      const w = state.stage.width;
+      const h = state.stage.height;
+      treeBufferCtx.clearRect(0, 0, w, h);
+      const baseSize = Math.min(w, h) * 0.13;
+      const groundY = treeAnchorPosition().y;
+      const p0 = { x: w / 2 - baseSize / 2, y: groundY };
+      const p1 = { x: w / 2 + baseSize / 2, y: groundY };
+      const glow = treeBufferCtx.createRadialGradient(w / 2, h * 0.8, baseSize * 0.18, w / 2, h * 0.82, baseSize * 3.4);
+      glow.addColorStop(0, withAlpha(paletteOf(0.6, state.tree.paletteIndex), 0.24));
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      treeBufferCtx.fillStyle = glow;
+      treeBufferCtx.beginPath();
+      treeBufferCtx.arc(w / 2, h * 0.82, baseSize * 3.4, 0, Math.PI * 2);
+      treeBufferCtx.fill();
+      if (!state.treeNodes.length) {
+        buildTreeGeometry();
+      }
+      const sorted = [...state.treeVisibleIds].sort((a, b) => state.treeNodes[a].depth - state.treeNodes[b].depth);
+      const lowMotionMode = state.treeSwayDuration > 0 && sorted.length > 72;
+      state.treeCollisionNodes = [];
+      for (const id of sorted) {
+        const node = state.treeNodes[id];
+        const fill = paletteOf(clamp((node.depth - 1) / Math.max(1, treeMaxDepth - 1), 0, 1), state.tree.paletteIndex);
+        const stroke = withAlpha(fill, 0.44);
+        const lineScale = 1.14 * (0.48 + (treeMaxDepth - node.depth + 1) / (treeMaxDepth + 1));
+        const [q0, q1, q2, q3] = node.points;
+        treeBufferCtx.beginPath();
+        treeBufferCtx.moveTo(q0.x, q0.y);
+        treeBufferCtx.lineTo(q1.x, q1.y);
+        treeBufferCtx.lineTo(q2.x, q2.y);
+        treeBufferCtx.lineTo(q3.x, q3.y);
+        treeBufferCtx.closePath();
+        treeBufferCtx.fillStyle = withAlpha(fill, 0.78);
+        treeBufferCtx.strokeStyle = stroke;
+        treeBufferCtx.lineWidth = lineScale;
+        treeBufferCtx.shadowColor = withAlpha(fill, lowMotionMode ? 0.16 : 0.32);
+        treeBufferCtx.shadowBlur = lowMotionMode ? 6 : 18;
+        treeBufferCtx.fill();
+        treeBufferCtx.stroke();
+        treeBufferCtx.shadowBlur = 0;
+        if (node.side > 9) {
+          state.treeCollisionNodes.push({
+            x: node.center.x,
+            y: node.center.y,
+            r: node.side * 0.44
+          });
+        }
+      }
+      state.treeNeedsRender = false;
+    }
+
+    function buildTreeGeometry() {
+      const w = state.stage.width;
+      const h = state.stage.height;
+      const baseSize = Math.min(w, h) * 0.13;
+      const groundY = treeAnchorPosition().y;
+      const p0 = { x: w / 2 - baseSize / 2, y: groundY };
+      const p1 = { x: w / 2 + baseSize / 2, y: groundY };
+      const renderAngle = Math.round(displayedTreeAngle());
+      const cacheKey = `${w}x${h}|${renderAngle}`;
+      if (state.treeGeometryCache.has(cacheKey)) {
+        state.treeNodes = state.treeGeometryCache.get(cacheKey);
+        state.treeGeometryAngle = renderAngle;
+        syncVisibleCollisionNodes();
+        if (!state.treeVisibleIds.size) {
+          resetTreeGrowth();
+        }
+        return;
+      }
+      const nodes = [];
+      const angle = clamp((renderAngle * Math.PI) / 180, Math.PI / 12, Math.PI / 2.08);
+
+      function walk(a, b, depthLeft, parentId) {
+        if (depthLeft <= 0) return;
+        const vx = b.x - a.x;
+        const vy = b.y - a.y;
+        const up = { x: vy, y: -vx };
+        const c = { x: b.x + up.x, y: b.y + up.y };
+        const d = { x: a.x + up.x, y: a.y + up.y };
+        const nodeDepth = treeMaxDepth - depthLeft + 1;
+        const side = Math.hypot(vx, vy);
+        const id = nodes.length;
+        nodes.push({
+          id,
+          parentId,
+          depth: nodeDepth,
+          side,
+          points: [a, b, c, d],
+          center: { x: (a.x + c.x) / 2, y: (a.y + c.y) / 2 }
+        });
+        const leftEdge = rotateVector(vx, vy, -angle);
+        const apex = {
+          x: d.x + leftEdge.x * Math.cos(angle),
+          y: d.y + leftEdge.y * Math.cos(angle)
+        };
+        walk(d, apex, depthLeft - 1, id);
+        walk(apex, c, depthLeft - 1, id);
+      }
+
+      walk(p0, p1, treeMaxDepth, null);
+      state.treeNodes = nodes;
+      state.treeGeometryCache.set(cacheKey, nodes);
+      state.treeGeometryAngle = renderAngle;
+      syncVisibleCollisionNodes();
+      if (!state.treeVisibleIds.size) {
+        resetTreeGrowth();
+      }
+    }
+
+    function setManualTreeDepth(depth) {
+      state.treeVisibleIds = new Set(
+        state.treeNodes.filter((node) => node.depth <= depth).map((node) => node.id)
+      );
+      state.treeRevealOrder = [];
+      state.treeIdleTimer = 0;
+      state.fullTreeCelebrated = false;
+      state.treeNeedsRender = true;
+      updateTreeLabels();
+    }
+
+    function resetTreeGrowth() {
+      if (!state.treeNodes.length) return;
+      if (state.tree.challengeMode) {
+        state.treeVisibleIds = new Set(
+          state.treeNodes.filter((node) => node.depth <= treeChallengeBaseDepth).map((node) => node.id)
+        );
+        state.treeRevealOrder = [];
+      } else {
+        state.treeVisibleIds = new Set(
+          state.treeNodes.filter((node) => node.depth <= state.tree.depth).map((node) => node.id)
+        );
+        state.treeRevealOrder = [];
+      }
+      state.fullTreeCelebrated = false;
+      state.treeIdleTimer = 0;
+      state.treeNeedsRender = true;
+      syncVisibleCollisionNodes();
+      updateTreeLabels();
+    }
+
+    function revealNearestHiddenBranch(hitX, hitY) {
+      if (!state.tree.challengeMode) return false;
+      let revealed = 0;
+      for (let step = 0; step < treeGrowthPerHit; step++) {
+        let best = null;
+        let bestDistance = Infinity;
+        for (const node of state.treeNodes) {
+          if (state.treeVisibleIds.has(node.id)) continue;
+          if (node.depth <= treeChallengeBaseDepth) continue;
+          if (node.parentId == null || !state.treeVisibleIds.has(node.parentId)) continue;
+          const dx = node.center.x - hitX;
+          const dy = node.center.y - hitY;
+          const dist = dx * dx + dy * dy;
+          if (dist < bestDistance) {
+            bestDistance = dist;
+            best = node;
+          }
+        }
+        if (!best) break;
+        state.treeVisibleIds.add(best.id);
+        state.treeRevealOrder.push(best.id);
+        revealed += 1;
+      }
+      if (!revealed) return false;
+      state.treeIdleTimer = 0;
+      state.treeNeedsRender = true;
+      syncVisibleCollisionNodes();
+      updateTreeLabels();
+      if (isTreeFull() && !state.fullTreeCelebrated) {
+        state.fullTreeCelebrated = true;
+        feedMessage('树已经进入满血状态。烟花会自动升空，满屏都会洒出玩家 2 的图案。');
+        void startCelebrationShow('auto');
+      }
+      return true;
+    }
+
+    function decayTreeGrowth() {
+      if (!state.tree.challengeMode) return false;
+      if (!state.treeRevealOrder.length) return false;
+      const id = state.treeRevealOrder.pop();
+      state.treeVisibleIds.delete(id);
+      state.fullTreeCelebrated = false;
+      syncVisibleCollisionNodes();
+      state.treeNeedsRender = true;
+      updateTreeLabels();
+      return true;
+    }
+
+    function collectKochSegment(points, start, end, depth, spikeAngle) {
+      if (depth <= 0) {
+        points.push(start);
+        return;
+      }
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const xA = start.x + dx / 3;
+      const yA = start.y + dy / 3;
+      const xB = start.x + (dx * 2) / 3;
+      const yB = start.y + (dy * 2) / 3;
+      const vx = xB - xA;
+      const vy = yB - yA;
+      const xC = xA + vx * Math.cos(spikeAngle) - vy * Math.sin(spikeAngle);
+      const yC = yA + vx * Math.sin(spikeAngle) + vy * Math.cos(spikeAngle);
+      collectKochSegment(points, start, { x: xA, y: yA }, depth - 1, spikeAngle);
+      collectKochSegment(points, { x: xA, y: yA }, { x: xC, y: yC }, depth - 1, spikeAngle);
+      collectKochSegment(points, { x: xC, y: yC }, { x: xB, y: yB }, depth - 1, spikeAngle);
+      collectKochSegment(points, { x: xB, y: yB }, end, depth - 1, spikeAngle);
+    }
+
+    function drawKochToContext(ctx, cfg, size, paletteIndex) {
+      const side = size * (cfg.paramB / 100) * 0.62;
+      const cx = size / 2;
+      const cy = size * 0.56;
+      const r = side / Math.sqrt(3);
+      const a = { x: cx - side / 2, y: cy + r / 2 };
+      const b = { x: cx + side / 2, y: cy + r / 2 };
+      const c = { x: cx, y: cy - r };
+      const angle = clamp((cfg.paramA * Math.PI) / 180, Math.PI / 3.6, Math.PI / 2.5);
+      const points = [];
+      collectKochSegment(points, a, b, cfg.level, angle);
+      collectKochSegment(points, b, c, cfg.level, angle);
+      collectKochSegment(points, c, a, cfg.level, angle);
+      points.push(a);
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+      ctx.closePath();
+      ctx.fillStyle = withAlpha(paletteOf(0.58, paletteIndex), 0.16);
+      ctx.strokeStyle = withAlpha(paletteOf(0.92, paletteIndex), 0.34);
+      ctx.lineWidth = size * 0.008;
+      ctx.shadowColor = withAlpha(paletteOf(0.66, paletteIndex), 0.38);
+      ctx.shadowBlur = size * 0.05;
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      drawGradientPath(ctx, points, paletteIndex, size * 0.0046, 0.94, true);
+    }
+
+    function drawSierpinskiRecursive(ctx, vertices, depth, maxDepth, paletteIndex) {
+      if (depth <= 0) {
+        const centroidY = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
+        const progress = clamp(0.1 + (1 - centroidY / ctx.canvas.height) * 0.9, 0, 1);
+        ctx.beginPath();
+        ctx.moveTo(vertices[0].x, vertices[0].y);
+        ctx.lineTo(vertices[1].x, vertices[1].y);
+        ctx.lineTo(vertices[2].x, vertices[2].y);
+        ctx.closePath();
+        ctx.fillStyle = withAlpha(paletteOf(progress, paletteIndex), 0.84);
+        ctx.strokeStyle = withAlpha(paletteOf(progress + 0.12, paletteIndex), 0.2);
+        ctx.lineWidth = Math.max(0.7, ctx.canvas.width * 0.0032);
+        ctx.fill();
+        ctx.stroke();
+        return;
+      }
+      const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+      const [a, b, c] = vertices;
+      const ab = mid(a, b);
+      const bc = mid(b, c);
+      const ca = mid(c, a);
+      drawSierpinskiRecursive(ctx, [a, ab, ca], depth - 1, maxDepth, paletteIndex);
+      drawSierpinskiRecursive(ctx, [ab, b, bc], depth - 1, maxDepth, paletteIndex);
+      drawSierpinskiRecursive(ctx, [ca, bc, c], depth - 1, maxDepth, paletteIndex);
+    }
+
+    function drawSierpinskiToContext(ctx, cfg, size, paletteIndex) {
+      const fillRatio = clamp(cfg.paramB / 100, 0.72, 0.9);
+      const side = size * 0.74 * fillRatio;
+      const triHeight = side * Math.sqrt(3) / 2;
+      const center = { x: size / 2, y: size * 0.55 };
+      const rotation = (cfg.paramA * Math.PI) / 180;
+      const base = [
+        { x: center.x - side / 2, y: center.y + triHeight / 2 },
+        { x: center.x + side / 2, y: center.y + triHeight / 2 },
+        { x: center.x, y: center.y - triHeight / 2 }
+      ];
+      const rotatePoint = (point) => {
+        const dx = point.x - center.x;
+        const dy = point.y - center.y;
+        return {
+          x: center.x + dx * Math.cos(rotation) - dy * Math.sin(rotation),
+          y: center.y + dx * Math.sin(rotation) + dy * Math.cos(rotation)
+        };
+      };
+      drawSierpinskiRecursive(ctx, base.map(rotatePoint), cfg.level, cfg.level, paletteIndex);
+    }
+
+    function drawPhyllotaxisToContext(ctx, cfg, size, paletteIndex) {
+      const count = 140 + cfg.level * 48;
+      const divergence = (cfg.paramA * Math.PI) / 180;
+      const spread = clamp(cfg.paramB / 100, 0.66, 0.82);
+      const maxRadius = size * 0.36 * spread;
+      const step = maxRadius / Math.sqrt(count);
+      for (let i = 0; i < count; i++) {
+        const t = i / Math.max(1, count - 1);
+        const radius = step * Math.sqrt(i);
+        const theta = i * divergence;
+        const x = size / 2 + Math.cos(theta) * radius;
+        const y = size / 2 + Math.sin(theta) * radius;
+        const dot = size * 0.0046 * (1.2 + 2 * (1 - t));
+        ctx.beginPath();
+        ctx.arc(x, y, dot, 0, Math.PI * 2);
+        ctx.fillStyle = withAlpha(paletteOf(t, paletteIndex), 0.92);
+        ctx.fill();
+      }
+    }
+
+    function drawHypotrochoidToContext(ctx, cfg, size, paletteIndex) {
+      const R = 30 + cfg.level * 4;
+      let r = Math.max(7, Math.round(10 + (100 - cfg.paramB) / 3.2));
+      if (gcd(R, r) > 1) r += 1;
+      const d = r * (0.9 + cfg.paramA / 240);
+      const loops = r / gcd(R, r);
+      const samples = 480 + cfg.level * 120;
+      const raw = [];
+      for (let i = 0; i <= samples; i++) {
+        const t = (i / samples) * Math.PI * 2 * loops;
+        raw.push({
+          x: (R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t),
+          y: (R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t)
+        });
+      }
+      const points = fitPoints(raw, size, size, 0.12);
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+      ctx.closePath();
+      ctx.fillStyle = withAlpha(paletteOf(0.58, paletteIndex), 0.07);
+      ctx.fill();
+      drawGradientPath(ctx, points, paletteIndex, size * 0.0052, 0.92, true);
+    }
+
+    function drawPenroseToContext(ctx, cfg, size, paletteIndex) {
+      const cx = size / 2;
+      const cy = size / 2;
+      const phi = (1 + Math.sqrt(5)) / 2;
+      const scaleRatio = clamp(cfg.paramB / 100, 0.68, 0.8);
+      const base = size * 0.32 * scaleRatio;
+      const layers = cfg.level + 2;
+      const rotationStep = (cfg.paramA * Math.PI) / 180 * 0.52;
+      const shrink = 0.71 + (scaleRatio - 0.68) * 0.9;
+      for (let layer = 0; layer < layers; layer++) {
+        const outerR = base * Math.pow(shrink, layer);
+        const innerR = outerR / phi * (0.92 + layer * 0.02);
+        const rotation = layer * rotationStep;
+        const outer = [];
+        const inner = [];
+        for (let i = 0; i < 10; i++) {
+          const theta = rotation + i * Math.PI / 5;
+          const innerTheta = theta + Math.PI / 10;
+          outer.push({ x: cx + Math.cos(theta) * outerR, y: cy + Math.sin(theta) * outerR });
+          inner.push({ x: cx + Math.cos(innerTheta) * innerR, y: cy + Math.sin(innerTheta) * innerR });
+        }
+        for (let i = 0; i < 10; i++) {
+          const rhomb = [outer[i], inner[i], outer[(i + 1) % 10], inner[(i + 1) % 10]];
+          ctx.beginPath();
+          ctx.moveTo(rhomb[0].x, rhomb[0].y);
+          for (let j = 1; j < rhomb.length; j++) ctx.lineTo(rhomb[j].x, rhomb[j].y);
+          ctx.closePath();
+          const t = (layer * 10 + i) / Math.max(1, layers * 10 - 1);
+          ctx.fillStyle = withAlpha(paletteOf(t, paletteIndex), 0.16 + (1 - layer / layers) * 0.16);
+          ctx.strokeStyle = withAlpha(paletteOf(1 - t, paletteIndex), 0.42);
+          ctx.lineWidth = size * 0.004;
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+    }
+
+    function renderSpriteToCanvas(canvas, cfg, paletteIndex) {
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width;
+      ctx.clearRect(0, 0, size, size);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      if (cfg.pattern === 'koch') {
+        drawKochToContext(ctx, cfg, size, paletteIndex);
+      } else if (cfg.pattern === 'sierpinski') {
+        drawSierpinskiToContext(ctx, cfg, size, paletteIndex);
+      } else if (cfg.pattern === 'phyllotaxis') {
+        drawPhyllotaxisToContext(ctx, cfg, size, paletteIndex);
+      } else if (cfg.pattern === 'hypotrochoid') {
+        drawHypotrochoidToContext(ctx, cfg, size, paletteIndex);
+      } else if (cfg.pattern === 'penrose') {
+        drawPenroseToContext(ctx, cfg, size, paletteIndex);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function releaseSpriteAsset(assetOrPromise) {
+      Promise.resolve(assetOrPromise).then((asset) => {
+        if (asset && asset.source && typeof asset.source.close === 'function') {
+          asset.source.close();
+        }
+      }).catch(() => {});
+    }
+
+    function trimSpriteCache(limit = 36) {
+      while (state.spriteCache.size > limit) {
+        const oldest = state.spriteCache.entries().next().value;
+        if (!oldest) break;
+        const [oldKey, oldAsset] = oldest;
+        state.spriteCache.delete(oldKey);
+        releaseSpriteAsset(oldAsset);
+      }
+      dom.cacheStatus.textContent = String(state.spriteCache.size);
+    }
+
+    async function getSpriteAsset(cfg, paletteIndex) {
+      const key = `${cfg.pattern}|${cfg.level}|${cfg.paramA}|${cfg.paramB}|${paletteIndex}`;
+      if (state.spriteCache.has(key)) {
+        return await state.spriteCache.get(key);
+      }
+      const assetPromise = (async () => {
+        const offscreen = document.createElement('canvas');
+        offscreen.width = 320;
+        offscreen.height = 320;
+        renderSpriteToCanvas(offscreen, cfg, paletteIndex);
+        let source = offscreen;
+        if (window.createImageBitmap) {
+          try {
+            source = await createImageBitmap(offscreen);
+          } catch (error) {
+            source = offscreen;
+          }
+        }
+        return { key, source, width: offscreen.width, height: offscreen.height };
+      })();
+      state.spriteCache.set(key, assetPromise);
+      trimSpriteCache();
+      const asset = await assetPromise;
+      state.spriteCache.set(key, asset);
+      dom.cacheStatus.textContent = String(state.spriteCache.size);
+      return asset;
+    }
+
+    function previewPaletteIndex() {
+      return cardPaletteIndex(state.player2.pattern);
+    }
+
+    async function renderPreview() {
+      if (!state.previewNeedsRender || state.previewTask) return;
+      state.previewNeedsRender = false;
+      const requestId = ++state.previewRequestId;
+      const cfg = {
+        pattern: state.player2.pattern,
+        level: state.player2.level,
+        paramA: state.player2.paramA,
+        paramB: state.player2.paramB
+      };
+      state.previewTask = (async () => {
+        const asset = await getSpriteAsset(cfg, previewPaletteIndex());
+        if (requestId !== state.previewRequestId) return;
+        previewCtx.clearRect(0, 0, dom.preview.width, dom.preview.height);
+        previewCtx.fillStyle = '#fffef7';
+        previewCtx.fillRect(0, 0, dom.preview.width, dom.preview.height);
+        previewCtx.save();
+        previewCtx.translate(dom.preview.width / 2, dom.preview.height * 0.56);
+        previewCtx.rotate(Math.sin(state.elapsed * 0.8) * 0.08);
+        const drawSize = dom.preview.width * 0.98;
+        previewCtx.globalAlpha = 1;
+        previewCtx.shadowColor = 'transparent';
+        previewCtx.shadowBlur = 0;
+        previewCtx.filter = 'saturate(2.9) contrast(1.55) brightness(0.96)';
+        previewCtx.drawImage(asset.source, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+        previewCtx.drawImage(asset.source, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+        previewCtx.filter = 'none';
+        previewCtx.restore();
+      })().finally(() => {
+        state.previewTask = null;
+      });
+      await state.previewTask;
+    }
+
+    function feedMessage(text) {
+      dom.feedCard.innerHTML = `<strong>舞台状态</strong>${text}`;
+    }
+
+    function updateSkyBadge() {
+      dom.stageSkyBadge.textContent = `天空: ${state.sprites.length} 枚漂浮图案`;
+    }
+
+    async function spawnPatternGroup() {
+      ensureAudioContext();
+      const cfg = {
+        pattern: state.player2.pattern,
+        level: state.player2.level,
+        paramA: state.player2.paramA,
+        paramB: state.player2.paramB
+      };
+      const paletteIndex = previewPaletteIndex();
+      const asset = await getSpriteAsset(cfg, paletteIndex);
+      const burst = 3;
+      const maxSprites = 28;
+      for (let i = 0; i < burst; i++) {
+        const scale = 0.24 + Math.random() * 0.16;
+        const laneCount = 7;
+        const laneIndex = state.spawnLane % laneCount;
+        state.spawnLane += 1;
+        const laneCenter = 0.12 + (laneIndex / (laneCount - 1)) * 0.76;
+        const spawnX = state.stage.width * clamp(laneCenter + (Math.random() - 0.5) * 0.08, 0.08, 0.92);
+        const spawnY = -40 - Math.random() * 80;
+        state.sprites.push({
+          asset,
+          paletteIndex,
+          x: spawnX,
+          y: spawnY,
+          baseX: spawnX,
+          wobblePhase: Math.random() * Math.PI * 2,
+          wobbleAmplitude: 18 + Math.random() * 36,
+          wobbleSpeed: 0.65 + Math.random() * 0.8,
+          speedY: 36 + Math.random() * 28,
+          wind: -6 + Math.random() * 12,
+          rotation: Math.random() * Math.PI * 2,
+          spin: (-0.45 + Math.random() * 0.9) * (0.6 + Math.random() * 0.7),
+          scale,
+          layer: Math.random() > 0.42 ? 'front' : 'back',
+          alpha: 1,
+          age: 0,
+          lifetime: 18 + Math.random() * 10
+        });
+      }
+      while (state.sprites.length > maxSprites) {
+        state.sprites.shift();
+      }
+      state.sendCount += 1;
+      state.previewNeedsRender = true;
+      updateSkyBadge();
+      feedMessage(`${player2Profiles[cfg.pattern].name} 已送入天空。当前会以一小组轻量位图精灵漂浮下落，第 ${state.sendCount} 次发送。`);
+    }
+
+    function getTreeCollisionNodes() {
+      return state.treeCollisionNodes;
+    }
+
+    function spawnFragments(x, y, paletteIndex, driftX = 0) {
+      const count = 9 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 36 + Math.random() * 110;
+        state.fragments.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed + driftX * 0.4,
+          vy: Math.sin(angle) * speed - 28 - Math.random() * 52,
+          size: 3 + Math.random() * 6,
+          rotation: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 7,
+          age: 0,
+          life: 0.7 + Math.random() * 0.55,
+          color: paletteOf(Math.random(), paletteIndex)
+        });
+      }
+      while (state.fragments.length > 220) {
+        state.fragments.shift();
+      }
+      state.treePulse = Math.min(1, state.treePulse + 0.32);
+    }
+
+    function spawnBranchCollapseParticles(node) {
+      const color = paletteOf(clamp((node.depth - 1) / Math.max(1, treeMaxDepth - 1), 0, 1), state.tree.paletteIndex);
+      for (let i = 0; i < 7; i++) {
+        const angle = (Math.PI * 2 * i) / 7 + Math.random() * 0.3;
+        const speed = 42 + Math.random() * 95;
+        state.celebration.particles.push({
+          kind: 'branch',
+          x: node.center.x,
+          y: node.center.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 12,
+          width: Math.max(4, node.side * (0.18 + Math.random() * 0.16)),
+          height: Math.max(3, node.side * (0.08 + Math.random() * 0.1)),
+          rotation: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 5.5,
+          age: 0,
+          life: 1.2 + Math.random() * 0.9,
+          gravity: 110 + Math.random() * 70,
+          color
+        });
+      }
+      while (state.celebration.particles.length > 320) {
+        state.celebration.particles.shift();
+      }
+    }
+
+    async function prepareCelebrationAssets() {
+      if (state.celebration.assets.length) return state.celebration.assets;
+      const patterns = Object.keys(player2Profiles);
+      const assets = await Promise.all(patterns.map(async (pattern) => {
+        const profile = player2Profiles[pattern];
+        const paletteIndex = cardPaletteIndex(pattern);
+        const asset = await getSpriteAsset({
+          pattern,
+          level: profile.level.value,
+          paramA: profile.paramA.value,
+          paramB: profile.paramB.value
+        }, paletteIndex);
+        return { pattern, asset, paletteIndex };
+      }));
+      state.celebration.assets = assets;
+      return assets;
+    }
+
+    async function startCelebrationShow(source = 'manual') {
+      if (state.celebration.loading || state.controlsLocked) return;
+      state.celebration.loading = true;
+      try {
+        ensureAudioContext();
+        await prepareCelebrationAssets();
+        setControlsLocked(true);
+        state.treeSwayTime = 0;
+        state.treeSwayDuration = 0;
+        state.sprites.length = 0;
+        state.fragments.length = 0;
+        state.celebration.active = true;
+        state.celebration.phase = 'align';
+        state.celebration.time = 0;
+        state.celebration.alignTime = 0;
+        state.celebration.alignStartAngle = state.tree.angle;
+        state.celebration.targetAngle = 45;
+        state.celebration.collapseTimer = 0;
+        state.celebration.nextLaunch = 0.1;
+        state.celebration.launches = 0;
+        state.celebration.rockets = [];
+        state.celebration.particles = [];
+        state.celebration.flash = 0;
+        state.celebration.bursts = [];
+        state.treeIdleTimer = 0;
+        updateSkyBadge();
+        updateTreeLabels();
+        feedMessage(source === 'auto'
+          ? '树满血了，操作面板已锁定。树会先回到中轴姿态，然后进入烟花庆祝。'
+          : '测试满血结算秀已触发。现在会锁定控制、树归中、放烟花，再逐层爆散回到 3 层。');
+      } finally {
+        state.celebration.loading = false;
+      }
+    }
+
+    function launchCelebrationRocket() {
+      if (!state.celebration.assets.length) return;
+      const startX = state.stage.width * (0.16 + Math.random() * 0.68);
+      const targetX = startX + (Math.random() - 0.5) * 120;
+      const startY = state.stage.height * 0.92;
+      const targetY = state.stage.height * (0.18 + Math.random() * 0.24);
+      const fuse = 0.92 + Math.random() * 0.24;
+      const paletteIndex = (state.tree.paletteIndex + Math.floor(Math.random() * paletteBank.length)) % paletteBank.length;
+      const color = paletteOf(Math.random(), paletteIndex);
+      state.celebration.rockets.push({
+        x: startX,
+        y: startY,
+        prevX: startX,
+        prevY: startY,
+        vx: (targetX - startX) / fuse,
+        vy: (targetY - startY) / fuse,
+        fuse,
+        age: 0,
+        paletteIndex,
+        color
+      });
+      playLaunchSound((startX / Math.max(1, state.stage.width)) * 2 - 1);
+    }
+
+    function burstCelebrationRocket(rocket) {
+      const patternCount = 24 + Math.floor(Math.random() * 8);
+      for (let i = 0; i < patternCount; i++) {
+        const entry = state.celebration.assets[Math.floor(Math.random() * state.celebration.assets.length)];
+        const angle = (Math.PI * 2 * i) / patternCount + Math.random() * 0.24;
+        const speed = 48 + Math.random() * 110;
+        const baseScale = 0.08 + Math.random() * 0.1;
+        state.celebration.particles.push({
+          kind: 'pattern',
+          asset: entry.asset,
+          x: rocket.x,
+          y: rocket.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 28,
+          scale: baseScale,
+          rotation: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 5.2,
+          age: 0,
+          life: 1.9 + Math.random() * 1.2,
+          gravity: 26 + Math.random() * 34
+        });
+      }
+      while (state.celebration.particles.length > 240) {
+        state.celebration.particles.shift();
+      }
+      playBurstSound((rocket.x / Math.max(1, state.stage.width)) * 2 - 1);
+    }
+
+    function updateCelebration(dt) {
+      if (!state.celebration.active) return;
+      if (state.celebration.phase === 'align') {
+        state.celebration.alignTime += dt;
+        const t = clamp(state.celebration.alignTime / state.celebration.alignDuration, 0, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const nextAngle = state.celebration.alignStartAngle + (state.celebration.targetAngle - state.celebration.alignStartAngle) * eased;
+        if (Math.abs(nextAngle - state.tree.angle) > 0.02) {
+          state.tree.angle = nextAngle;
+          dom.treeAngle.value = String(Math.round(state.tree.angle));
+          buildTreeGeometry();
+          state.treeNeedsRender = true;
+          updateTreeLabels();
+        }
+        if (t >= 1) {
+          state.tree.angle = state.celebration.targetAngle;
+          dom.treeAngle.value = String(Math.round(state.tree.angle));
+          buildTreeGeometry();
+          state.treeNeedsRender = true;
+          state.celebration.phase = 'fireworks';
+          state.celebration.time = 0;
+          state.celebration.nextLaunch = 0.08;
+          feedMessage('树已经回到正中 45°。现在进入烟花庆祝时间。');
+        }
+      }
+
+      if (state.celebration.phase === 'fireworks') {
+        state.celebration.time += dt;
+        state.celebration.nextLaunch -= dt;
+        if (state.celebration.time < state.celebration.duration && state.celebration.nextLaunch <= 0) {
+          launchCelebrationRocket();
+          state.celebration.launches += 1;
+          state.celebration.nextLaunch = 0.52 + Math.random() * 0.34;
+        }
+        if (state.celebration.time >= state.celebration.duration && !state.celebration.rockets.length && !state.celebration.bursts.length) {
+          state.celebration.phase = 'collapse';
+          state.celebration.collapseTimer = 0.28;
+          feedMessage('烟花结束，树开始从最外层向内一层层爆散回落。');
+        }
+      }
+
+      if (state.celebration.phase === 'collapse') {
+        state.celebration.collapseTimer -= dt;
+        if (state.celebration.collapseTimer <= 0) {
+          const deepest = Math.max(treeChallengeBaseDepth, visibleTreeDepth());
+          if (deepest > treeChallengeBaseDepth) {
+            const toRemove = [...state.treeVisibleIds]
+              .map((id) => state.treeNodes[id])
+              .filter((node) => node && node.depth === deepest);
+            for (const node of toRemove) {
+              spawnBranchCollapseParticles(node);
+              state.treeVisibleIds.delete(node.id);
+              state.treeRevealOrder = state.treeRevealOrder.filter((id) => id !== node.id);
+            }
+            syncVisibleCollisionNodes();
+            state.treeNeedsRender = true;
+            updateTreeLabels();
+            state.celebration.collapseTimer = state.celebration.collapseInterval;
+            state.treePulse = Math.max(state.treePulse, 0.44);
+          } else {
+            state.celebration.phase = 'done';
+            state.celebration.collapseTimer = 0.45;
+          }
+        }
+      }
+
+      if (state.celebration.phase === 'done') {
+        state.celebration.collapseTimer -= dt;
+        if (state.celebration.collapseTimer <= 0) {
+          state.celebration.active = false;
+          state.celebration.phase = 'idle';
+          state.celebration.flash = 0;
+          state.celebration.rockets = [];
+          state.celebration.bursts = [];
+          state.celebration.particles = [];
+          state.fullTreeCelebrated = false;
+          state.treeIdleTimer = 0;
+          state.sprites.length = 0;
+          state.fragments.length = 0;
+          setControlsLocked(false);
+          updateSkyBadge();
+          feedMessage('结算完成。树已回到可重新生长的 3 层状态，两位玩家可以继续互动。');
+        }
+      }
+
+      state.celebration.flash = Math.max(0, state.celebration.flash - dt * 0.58);
+      for (let i = state.celebration.rockets.length - 1; i >= 0; i--) {
+        const rocket = state.celebration.rockets[i];
+        rocket.age += dt;
+        rocket.prevX = rocket.x;
+        rocket.prevY = rocket.y;
+        rocket.x += rocket.vx * dt;
+        rocket.y += rocket.vy * dt;
+        if (rocket.age >= rocket.fuse) {
+          burstCelebrationRocket(rocket);
+          state.celebration.rockets.splice(i, 1);
+        }
+      }
+      for (let i = state.celebration.particles.length - 1; i >= 0; i--) {
+        const particle = state.celebration.particles[i];
+        particle.age += dt;
+        particle.vy += particle.gravity * dt;
+        particle.x += particle.vx * dt;
+        particle.y += particle.vy * dt;
+        if (particle.kind === 'pattern' || particle.kind === 'branch') {
+          particle.rotation += particle.spin * dt;
+        }
+        if (particle.age >= particle.life) {
+          state.celebration.particles.splice(i, 1);
+        }
+      }
+      for (let i = state.celebration.bursts.length - 1; i >= 0; i--) {
+        const burst = state.celebration.bursts[i];
+        burst.age += dt;
+        if (burst.age >= burst.life) {
+          state.celebration.bursts.splice(i, 1);
+        }
+      }
+    }
+
+    function update(dt) {
+      state.elapsed += dt;
+      scheduleBackgroundMusic();
+      state.treePulse = Math.max(0, state.treePulse - dt * 1.45);
+      if (state.treeSwayDuration > 0) {
+        state.treeSwayTime += dt;
+        if (state.treeSwayTime >= state.treeSwayDuration) {
+          state.treeSwayTime = 0;
+          state.treeSwayDuration = 0;
+          buildTreeGeometry();
+          state.treeNeedsRender = true;
+        }
+        if (Math.round(displayedTreeAngle()) !== state.treeGeometryAngle) {
+          buildTreeGeometry();
+          state.treeNeedsRender = true;
+        }
+      }
+      if (!state.celebration.active && state.tree.challengeMode && state.treeRevealOrder.length) {
+        state.treeIdleTimer += dt;
+        while (state.treeIdleTimer >= treeDecayInterval && state.treeRevealOrder.length) {
+          state.treeIdleTimer -= treeDecayInterval;
+          decayTreeGrowth();
+        }
+      }
+      updateCelebration(dt);
+      const treeNodes = getTreeCollisionNodes();
+      for (let i = state.sprites.length - 1; i >= 0; i--) {
+        const sprite = state.sprites[i];
+        sprite.age += dt;
+        sprite.baseX += sprite.wind * dt;
+        sprite.y += sprite.speedY * dt;
+        sprite.x = sprite.baseX + Math.sin(sprite.age * sprite.wobbleSpeed + sprite.wobblePhase) * sprite.wobbleAmplitude;
+        sprite.rotation += sprite.spin * dt;
+        sprite.alpha = 1;
+        const hitRadius = Math.max(14, 320 * sprite.scale * 0.18);
+        let hitTree = false;
+        for (const node of treeNodes) {
+          const dx = sprite.x - node.x;
+          const dy = sprite.y - node.y;
+          const radius = node.r + hitRadius;
+          if (dx * dx + dy * dy <= radius * radius) {
+            spawnFragments(sprite.x, sprite.y, sprite.paletteIndex, sprite.wind);
+            playImpactSound((sprite.x / Math.max(1, state.stage.width)) * 2 - 1);
+            revealNearestHiddenBranch(sprite.x, sprite.y);
+            state.treeIdleTimer = 0;
+            state.sprites.splice(i, 1);
+            hitTree = true;
+            break;
+          }
+        }
+        if (hitTree) continue;
+        if (sprite.y > state.stage.height + 180 || sprite.age > sprite.lifetime) {
+          state.sprites.splice(i, 1);
+        }
+      }
+      for (let i = state.fragments.length - 1; i >= 0; i--) {
+        const fragment = state.fragments[i];
+        fragment.age += dt;
+        fragment.vy += 160 * dt;
+        fragment.x += fragment.vx * dt;
+        fragment.y += fragment.vy * dt;
+        fragment.rotation += fragment.spin * dt;
+        if (fragment.age >= fragment.life) {
+          state.fragments.splice(i, 1);
+        }
+      }
+      updateSkyBadge();
+    }
+
+    function drawBackground(ctx, w, h, time) {
+      ctx.fillStyle = '#f8f1e2';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(w * 0.11, 0);
+      ctx.lineTo(0, h * 0.16);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#2563eb';
+      ctx.beginPath();
+      ctx.moveTo(w, 0);
+      ctx.lineTo(w, h * 0.14);
+      ctx.lineTo(w * 0.92, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      for (let i = 0; i < state.stars.length; i++) {
+        const star = state.stars[i];
+        const driftX = Math.sin(time * 0.5 + star.x * 0.01) * Math.min(5, star.drift * 0.5);
+        const bobY = Math.sin(time * 2.8 + star.y * 0.025 + i * 0.2) * 10;
+        const x = star.x + driftX;
+        const y = Math.min(h * 0.38, star.y * 0.82) + bobY;
+        const size = 6 + star.radius * 3.5;
+        ctx.strokeStyle = 'rgba(17,24,39,0.18)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, y - size * 0.9);
+        ctx.stroke();
+
+        const shapeType = Math.round(star.radius * 10) % 4;
+        ctx.fillStyle = ['#2563eb', '#ef4444', '#facc15', '#111827'][shapeType];
+        ctx.strokeStyle = '#111827';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        if (shapeType === 0) {
+          ctx.rect(x - size * 0.5, y - size * 0.5, size, size);
+        } else if (shapeType === 1) {
+          ctx.moveTo(x, y - size * 0.62);
+          ctx.lineTo(x + size * 0.62, y + size * 0.45);
+          ctx.lineTo(x - size * 0.62, y + size * 0.45);
+          ctx.closePath();
+        } else if (shapeType === 2) {
+          ctx.moveTo(x, y - size * 0.72);
+          ctx.lineTo(x + size * 0.62, y);
+          ctx.lineTo(x, y + size * 0.72);
+          ctx.lineTo(x - size * 0.62, y);
+          ctx.closePath();
+        } else {
+          ctx.arc(x, y, size * 0.42, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#2563eb';
+      ctx.beginPath();
+      ctx.ellipse(w / 2, h * 0.94, w * 0.34, h * 0.1, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.68)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.ellipse(w / 2, h * (0.94 - i * 0.02), w * (0.11 + i * 0.05), h * (0.024 + i * 0.01), 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    function drawSprites(ctx, layer) {
+      for (const sprite of state.sprites) {
+        if (layer && sprite.layer !== layer) continue;
+        const size = 320 * sprite.scale;
+        ctx.save();
+        ctx.translate(sprite.x, sprite.y);
+        ctx.rotate(sprite.rotation);
+        ctx.globalAlpha = 1;
+        ctx.filter = 'saturate(2.7) contrast(1.4) brightness(0.96)';
+        ctx.drawImage(sprite.asset.source, -size / 2, -size / 2, size, size);
+        ctx.drawImage(sprite.asset.source, -size / 2, -size / 2, size, size);
+        ctx.filter = 'none';
+        ctx.restore();
+      }
+    }
+
+    function drawFragments(ctx) {
+      for (const fragment of state.fragments) {
+        const alpha = clamp(1 - fragment.age / fragment.life, 0, 1);
+        if (alpha <= 0) continue;
+        ctx.save();
+        ctx.translate(fragment.x, fragment.y);
+        ctx.rotate(fragment.rotation);
+        ctx.globalAlpha = alpha * 0.92;
+        ctx.fillStyle = fragment.color;
+        ctx.shadowColor = withAlpha(fragment.color, alpha * 0.6);
+        ctx.shadowBlur = 10;
+        ctx.fillRect(-fragment.size / 2, -fragment.size / 2, fragment.size, fragment.size);
+        ctx.restore();
+      }
+    }
+
+    function drawTreeAura(ctx) {
+      if (state.treePulse <= 0.01) return;
+      const anchor = treeAnchorPosition();
+      const radius = Math.min(state.stage.width, state.stage.height) * (0.16 + state.treePulse * 0.08);
+      const centerX = anchor.x;
+      const centerY = anchor.y - state.stage.height * 0.1;
+      const glow = ctx.createRadialGradient(centerX, centerY, 12, centerX, centerY, radius);
+      glow.addColorStop(0, withAlpha(paletteOf(0.55, state.tree.paletteIndex), 0.08 + state.treePulse * 0.16));
+      glow.addColorStop(0.52, withAlpha(paletteOf(0.85, state.tree.paletteIndex), 0.05 + state.treePulse * 0.08));
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(centerX, anchor.y - state.stage.height * 0.12, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawTreeLayer(ctx) {
+      ctx.drawImage(treeBuffer, 0, 0, state.stage.width, state.stage.height);
+    }
+
+    function drawCelebration(ctx) {
+      if (!state.celebration.active && state.celebration.flash <= 0.01) return;
+      for (const rocket of state.celebration.rockets) {
+        ctx.save();
+        ctx.strokeStyle = rocket.color;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(rocket.prevX, rocket.prevY);
+        ctx.lineTo(rocket.x, rocket.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+      for (const particle of state.celebration.particles) {
+        const alpha = clamp(1 - particle.age / particle.life, 0, 1);
+        if (alpha <= 0) continue;
+        ctx.save();
+        if (particle.kind === 'pattern') {
+          const lifeT = clamp(particle.age / particle.life, 0, 1);
+          const sizePulse = 0.28 + Math.sin(lifeT * Math.PI) * 1.08;
+          const size = 320 * particle.scale * sizePulse;
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(particle.rotation);
+          ctx.globalAlpha = 1;
+          ctx.filter = 'saturate(2.8) contrast(1.42) brightness(0.96)';
+          ctx.drawImage(particle.asset.source, -size / 2, -size / 2, size, size);
+          ctx.drawImage(particle.asset.source, -size / 2, -size / 2, size, size);
+        } else if (particle.kind === 'branch') {
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(particle.rotation);
+          ctx.fillStyle = withAlpha(particle.color, alpha * 0.9);
+          ctx.shadowColor = withAlpha(particle.color, alpha * 0.56);
+          ctx.shadowBlur = 12;
+          ctx.fillRect(-particle.width / 2, -particle.height / 2, particle.width, particle.height);
+        } else {
+          ctx.fillStyle = particle.color;
+          ctx.shadowColor = withAlpha(particle.color, alpha * 0.75);
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    function render() {
+      if (state.treeNeedsRender) renderTreeLayer();
+      drawBackground(stageCtx, state.stage.width, state.stage.height, state.elapsed);
+      drawSprites(stageCtx, 'back');
+      drawTreeAura(stageCtx);
+      drawTreeLayer(stageCtx);
+      drawSprites(stageCtx, 'front');
+      drawFragments(stageCtx);
+      drawCelebration(stageCtx);
+      renderPreview();
+    }
+
+    function animationFrame(now) {
+      const dt = Math.min(0.033, Math.max(0.001, (now - state.lastTime) / 1000));
+      state.lastTime = now;
+      update(dt);
+      render();
+      requestAnimationFrame(animationFrame);
+    }
+
+    function bindTreeControls() {
+      dom.treeDepth.addEventListener('input', () => {
+        state.tree.depth = Number(dom.treeDepth.value);
+        if (!state.tree.challengeMode) {
+          setManualTreeDepth(state.tree.depth);
+        } else {
+          updateTreeLabels();
+        }
+      });
+      dom.treeAngle.addEventListener('input', () => {
+        ensureAudioContext();
+        state.tree.angle = Number(dom.treeAngle.value);
+        state.treeSwayOriginAngle = state.tree.angle;
+        state.treeSwayTime = 0;
+        state.treeSwayDuration = 0;
+        buildTreeGeometry();
+        updateTreeLabels();
+        state.treeNeedsRender = true;
+      });
+      dom.treePalette.addEventListener('input', () => {
+        ensureAudioContext();
+        state.tree.paletteIndex = Number(dom.treePalette.value);
+        state.celebration.assets = [];
+        updateTreeLabels();
+        state.treeNeedsRender = true;
+        state.previewNeedsRender = true;
+        void renderPatternCards();
+      });
+
+      let angleDialDragging = false;
+
+      const commitAngleValue = (nextAngle) => {
+        const clamped = clamp(Math.round(nextAngle), 20, 70);
+        if (clamped === state.tree.angle) return;
+        dom.treeAngle.value = String(clamped);
+        dom.treeAngle.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+
+      if (dom.treeAngleDial) {
+        dom.treeAngleDial.addEventListener('pointerdown', (event) => {
+          ensureAudioContext();
+          angleDialDragging = true;
+          dom.treeAngleDial.classList.add('is-dragging');
+          dom.treeAngleDial.setPointerCapture?.(event.pointerId);
+          event.preventDefault();
+        });
+
+        dom.treeAngleDial.addEventListener('pointermove', (event) => {
+          if (!angleDialDragging) return;
+          const rect = dom.treeAngleDial.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          const dx = event.clientX - centerX;
+          const dy = event.clientY - centerY;
+          let degrees = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+          if (degrees > 180) degrees -= 360;
+          const clampedDeg = clamp(degrees, -135, 135);
+          const progress = (clampedDeg + 135) / 270;
+          commitAngleValue(20 + progress * 50);
+          event.preventDefault();
+        });
+
+        const stopAngleDial = () => {
+          angleDialDragging = false;
+          dom.treeAngleDial.classList.remove('is-dragging');
+        };
+
+        dom.treeAngleDial.addEventListener('pointerup', stopAngleDial);
+        dom.treeAngleDial.addEventListener('pointercancel', stopAngleDial);
+        dom.treeAngleDial.addEventListener('wheel', (event) => {
+          event.preventDefault();
+          commitAngleValue(state.tree.angle - Math.sign(event.deltaY));
+        }, { passive: false });
+        dom.treeAngleDial.addEventListener('keydown', (event) => {
+          if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+            commitAngleValue(state.tree.angle - 1);
+            event.preventDefault();
+          } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+            commitAngleValue(state.tree.angle + 1);
+            event.preventDefault();
+          }
+        });
+      }
+
+      if (dom.treePalettePicker) {
+        dom.treePalettePicker.querySelectorAll('.palette-option').forEach((option) => {
+          option.addEventListener('click', () => {
+            ensureAudioContext();
+            const next = Number(option.dataset.paletteIndex);
+            if (next === state.tree.paletteIndex) return;
+            dom.treePalette.value = String(next);
+            dom.treePalette.dispatchEvent(new Event('input', { bubbles: true }));
+          });
+        });
+      }
+
+      dom.challengeMode.addEventListener('change', () => {
+        ensureAudioContext();
+        state.tree.challengeMode = dom.challengeMode.checked;
+        resetTreeGrowth();
+        if (state.tree.challengeMode) {
+          feedMessage('挑战模式开启。树会回到 3 层起始状态，之后必须靠掉落物命中树身才能继续生长。');
+        } else {
+          feedMessage('挑战模式关闭。你可以直接用左侧层级滑杆控制树的完整深度。');
+        }
+      });
+      dom.treeResetBtn.addEventListener('click', () => {
+        ensureAudioContext();
+        state.tree.depth = treeDefaults.depth;
+        state.tree.angle = treeDefaults.angle;
+        state.tree.paletteIndex = treeDefaults.paletteIndex;
+        state.treeSwayOriginAngle = state.tree.angle;
+        state.treeSwayTime = 0;
+        state.treeSwayDuration = 0;
+        dom.treeDepth.value = state.tree.depth;
+        dom.treeAngle.value = state.tree.angle;
+        dom.treePalette.value = state.tree.paletteIndex;
+        state.celebration.assets = [];
+        buildTreeGeometry();
+        resetTreeGrowth();
+        state.previewNeedsRender = true;
+        void renderPatternCards();
+        feedMessage(state.tree.challengeMode ? '树已经回到挑战模式开场状态。现在又只保留 3 层起始枝干了。' : '树已经回到推荐开场状态，可以继续和右侧玩家配合。');
+      });
+      dom.treePulseBtn.addEventListener('click', () => {
+        ensureAudioContext();
+        state.treePulse = Math.max(state.treePulse, 0.65);
+        state.treeSwayTime = 0;
+        state.treeSwayDuration = 4.4;
+        state.treeSwayOriginAngle = state.tree.angle;
+        feedMessage('树会通过分支角度来回扫动两轮，像在轻轻挥手。现在天空里飘落的图案如果碰到树，就会炸成一小团碎片。');
+      });
+      dom.celebrationBtn.addEventListener('click', () => {
+        ensureAudioContext();
+        void startCelebrationShow('manual');
+      });
+    }
+
+    function bindPlayer2Controls() {
+      dom.patternSelect.addEventListener('change', () => {
+        ensureAudioContext();
+        applyPlayer2Profile(dom.patternSelect.value);
+      });
+      if (dom.patternCardGrid) {
+        let isDraggingPatternStrip = false;
+        let dragStartX = 0;
+        let dragStartScroll = 0;
+
+        dom.patternCardGrid.addEventListener('pointerdown', (event) => {
+          isDraggingPatternStrip = true;
+          dragStartX = event.clientX;
+          dragStartScroll = dom.patternCardGrid.scrollLeft;
+          dom.patternCardGrid.setPointerCapture?.(event.pointerId);
+          dom.patternCardGrid.style.cursor = 'grabbing';
+        });
+
+        dom.patternCardGrid.addEventListener('pointermove', (event) => {
+          if (!isDraggingPatternStrip) return;
+          const dx = event.clientX - dragStartX;
+          dom.patternCardGrid.scrollLeft = dragStartScroll - dx;
+          event.preventDefault();
+        });
+
+        const stopPatternStripDrag = () => {
+          isDraggingPatternStrip = false;
+          dom.patternCardGrid.style.cursor = 'grab';
+        };
+
+        dom.patternCardGrid.addEventListener('pointerup', stopPatternStripDrag);
+        dom.patternCardGrid.addEventListener('pointercancel', stopPatternStripDrag);
+        dom.patternCardGrid.addEventListener('pointerleave', stopPatternStripDrag);
+
+        dom.patternCardGrid.querySelectorAll('.pattern-card').forEach((card) => {
+          card.addEventListener('click', () => {
+            ensureAudioContext();
+            const next = card.dataset.pattern;
+            if (!next || next === state.player2.pattern) return;
+            dom.patternSelect.value = next;
+            dom.patternSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+        });
+      }
+      dom.patternLevel.addEventListener('input', () => {
+        ensureAudioContext();
+        state.player2.level = Number(dom.patternLevel.value);
+        dom.patternLevelValue.textContent = state.player2.level;
+        state.previewNeedsRender = true;
+      });
+      dom.paramA.addEventListener('input', () => {
+        ensureAudioContext();
+        state.player2.paramA = Number(dom.paramA.value);
+        dom.paramAValue.textContent = formatProfileValue(state.player2.paramA, player2Profiles[state.player2.pattern].paramA.unit);
+        state.previewNeedsRender = true;
+      });
+      dom.paramB.addEventListener('input', () => {
+        ensureAudioContext();
+        state.player2.paramB = Number(dom.paramB.value);
+        dom.paramBValue.textContent = formatProfileValue(state.player2.paramB, player2Profiles[state.player2.pattern].paramB.unit);
+        state.previewNeedsRender = true;
+      });
+      dom.sendBtn.addEventListener('click', async () => {
+        dom.sendBtn.disabled = true;
+        dom.sendBtn.textContent = '位图生成中...';
+        try {
+          await spawnPatternGroup();
+        } finally {
+          dom.sendBtn.disabled = false;
+          dom.sendBtn.textContent = '发送到天空';
+        }
+      });
+      dom.clearSkyBtn.addEventListener('click', () => {
+        ensureAudioContext();
+        state.sprites.length = 0;
+        updateSkyBadge();
+        feedMessage('天空已经清空，可以重新编一轮新的风景。');
+      });
+    }
+
+    function renderGameToText() {
+      const payload = {
+        mode: 'dual-fractal-garden',
+        coordinateSystem: { origin: 'top-left', x: 'right', y: 'down' },
+        tree: {
+          depth: state.tree.depth,
+          angle: state.tree.angle,
+          palette: paletteBank[state.tree.paletteIndex].name,
+          challengeMode: state.tree.challengeMode,
+          grownBranches: Math.max(0, state.treeVisibleIds.size - countBaseVisibleNodes()),
+          full: isTreeFull()
+        },
+        player2: {
+          pattern: player2Profiles[state.player2.pattern].name,
+          level: state.player2.level,
+          paramA: state.player2.paramA,
+          paramB: state.player2.paramB
+        },
+        skyCount: state.sprites.length,
+        celebration: {
+          active: state.celebration.active,
+          phase: state.celebration.phase,
+          rockets: state.celebration.rockets.length,
+          particles: state.celebration.particles.length,
+          controlsLocked: state.controlsLocked
+        },
+        sprites: state.sprites.slice(0, 6).map((sprite) => ({
+          x: Number(sprite.x.toFixed(1)),
+          y: Number(sprite.y.toFixed(1)),
+          scale: Number(sprite.scale.toFixed(2)),
+          alpha: Number(sprite.alpha.toFixed(2))
+        }))
+      };
+      return JSON.stringify(payload);
+    }
+
+    window.render_game_to_text = renderGameToText;
+    window.advanceTime = async (ms) => {
+      let remaining = Math.max(0, ms) / 1000;
+      while (remaining > 0) {
+        const step = Math.min(1 / 60, remaining);
+        update(step);
+        remaining -= step;
+      }
+      render();
+    };
+
+    window.getDualGardenStats = () => ({
+      cacheSize: state.spriteCache.size,
+      spriteCount: state.sprites.length,
+      fireworks: {
+        active: state.celebration.active,
+        phase: state.celebration.phase,
+        rockets: state.celebration.rockets.length,
+        particles: state.celebration.particles.length
+      },
+      stage: { width: state.stage.width, height: state.stage.height }
+    });
+
+    window.triggerCelebrationShow = () => {
+      void startCelebrationShow('manual');
+    };
+
+    window.addEventListener('resize', () => {
+      measureStage();
+      buildTreeGeometry();
+      resetTreeGrowth();
+      render();
+    });
+
+    applyPlayer2Profile('koch');
+    bindTreeControls();
+    bindPlayer2Controls();
+    window.addEventListener('pointerdown', () => {
+      ensureAudioContext();
+    }, { passive: true });
+    measureStage();
+    buildTreeGeometry();
+    resetTreeGrowth();
+    feedMessage('双人舞台已经就绪。左侧先把树定住，右侧再把图案送进天空。');
+    requestAnimationFrame(animationFrame);
+  </script>
+</body>
+</html>
